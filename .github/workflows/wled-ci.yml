@@ -3,11 +3,11 @@ name: PlatformIO CI - JoeboyC2
 on:
   push:
     branches:
-      - master
+      - main
       - JoeboyC2_Mods
   pull_request:
     branches:
-      - master
+      - main
       - JoeboyC2_Mods
 
 jobs:
