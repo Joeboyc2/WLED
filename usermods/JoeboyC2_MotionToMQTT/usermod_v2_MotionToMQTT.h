@@ -68,11 +68,11 @@ class Usermod_MotionToMQTT : public Usermod {
             // Detect motion and publish message to MQTT
             bool currentMotionState = digitalRead(motionInputPin) == HIGH;
 
-            if (currentMotionState != sensorMotion) {
-                sensorMotion = currentMotionState;
+            if (currentMotionState != motionDetected) {
+                motionDetected = currentMotionState;
                 motionStateChange = millis();
 
-                if (sensorMotion) {
+                if (motionDetected) {
                     Serial.println("Motion detected!");
                     mqtt->publish(mqttMotionTopic.c_str(), 0, false, "ON");
                 } else {
@@ -112,29 +112,21 @@ class Usermod_MotionToMQTT : public Usermod {
         }
 
         void addToJsonInfo(JsonObject& root) {
-
             JsonObject user = root["u"];
             if (user.isNull()) user = root.createNestedObject("u");
 
             JsonArray mot = user.createNestedArray("Motion");
             // Add Motion state to Json API
-            if (isnan(motionDetected)) {
-                mot.add(" Sensor Error!");
-                return;
-            }
-
-            if (motionDetected == HIGH){
-                mot.add(" Motion Detected!");
-            }else{
-                mot.add(" No Motion Detected");
+            if (motionDetected) {
+                mot.add("Motion Detected!");
+            } else {
+                mot.add("No Motion Detected");
             }
 
             JsonArray lastmot = user.createNestedArray("Last Motion Event");
-
-            if (motionDetected == 0) {
-                lastmot.add(" No Motion Yet");
-                return;
-            }else{
+            if (motionStateChange == 0) {
+                lastmot.add("No Motion Yet");
+            } else {
                 lastmot.add(motionStateChange);
             }
         }
