@@ -54,21 +54,15 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-      env:
-        FORCE_JAVASCRIPT_ACTIONS_TO_NODE20=true
     - name: Cache PlatformIO
       uses: actions/cache@v3
       with:
         path: ~/.platformio
         key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
-        env:
-          FORCE_JAVASCRIPT_ACTIONS_TO_NODE20=true
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
           python-version: '3.9'
-      env:
-        FORCE_JAVASCRIPT_ACTIONS_TO_NODE20=true
     - name: Install PlatformIO
       run: pip install -r requirements.txt
     - name: Build firmware
@@ -104,3 +98,6 @@ jobs:
           *.bin
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE20: true
