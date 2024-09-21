@@ -40,6 +40,14 @@
   #include "../usermods/sensors_to_mqtt/usermod_v2_SensorsToMqtt.h"
 #endif
 
+#ifdef USERMOD_DHT22TOMQTT
+  #include "../usermods/JoeboyC2_DHT22ToMQTT/usermod_v2_DHT22ToMQTT.h"
+#endif
+
+#ifdef USERMOD_MOTIONTOMQTT
+  #include "../usermods/JoeboyC2_MotionToMQTT/usermod_v2_MotionToMQTT.h"
+#endif
+
 #ifdef USERMOD_PIRSWITCH
   #include "../usermods/PIR_sensor_switch/usermod_PIR_sensor_switch.h"
 #endif
@@ -242,6 +250,14 @@ void registerUsermods()
 
   #ifdef USERMOD_SENSORSTOMQTT
   usermods.add(new UserMod_SensorsToMQTT());
+  #endif
+
+  #ifdef USERMOD_DHT22TOMQTT
+  usermods.add(new Usermod_DHT22ToMQTT());
+  #endif
+  
+  #ifdef USERMOD_MOTIONTOMQTT
+  usermods.add(new Usermod_MotionToMQTT());
   #endif
 
   #ifdef USERMOD_PIRSWITCH
