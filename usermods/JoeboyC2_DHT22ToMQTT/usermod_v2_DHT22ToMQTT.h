@@ -33,6 +33,8 @@ class Usermod_DHT22ToMQTT : public Usermod {
         String mqttTemperatureTopic = "";
         String mqttHumidityTopic = "";
         unsigned long currentTime = 0;
+        unsigned long lastPrintTime = 0;
+        const unsigned long printInterval = 60000; // Print every 60 seconds
 
     public:
         void setup() {
@@ -95,11 +97,18 @@ class Usermod_DHT22ToMQTT : public Usermod {
 
             // Check if any reads failed and exit
             if (isnan(SensorHumidity) || isnan(SensorTemperature)) {
-                Serial.println("Failed to read the DHT Sensor");
+                if (currentTime - lastPrintTime >= printInterval) {
+                    Serial.println("Failed to read the DHT Sensor");
+                    lastPrintTime = currentTime;
+                }
                 return;
             }
-            Serial.printf("Temperature and Humidity read successfully\n %f °C, %f %%\n",
-                          SensorTemperature, SensorHumidity);
+            // Only print successful readings once per minute
+            if (currentTime - lastPrintTime >= printInterval) {
+                Serial.printf("Temperature and Humidity read successfully\n %f °C, %f %%\n",
+                              SensorTemperature, SensorHumidity);
+                lastPrintTime = currentTime;
+            }
         }
 
         void loop() {
@@ -123,7 +132,11 @@ class Usermod_DHT22ToMQTT : public Usermod {
                         mqtt->publish(mqttHumidityTopic.c_str(), 0, false, String(SensorHumidity).c_str());
                     }
                 } else {
-                    Serial.println("Missing MQTT connection. Not publishing data");
+                    // Print MQTT connection status only once per minute
+                    if (currentTime - lastPrintTime >= printInterval) {
+                        Serial.println("Missing MQTT connection for DHT22. Not publishing data");
+                        lastPrintTime = currentTime;
+                    }
                     mqttInitialized = false;
                 }
             }

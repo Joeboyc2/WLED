@@ -21,6 +21,8 @@ class Usermod_MotionToMQTT : public Usermod {
         bool mqttInitialized = false;
         String mqttMotionTopic = "";
         unsigned long startupTime;
+        unsigned long lastPrintTime = 0;
+        const unsigned long printInterval = 60000; // Print every 60 seconds
   public:
         void setup() {
             startupTime = millis();
@@ -78,9 +80,8 @@ class Usermod_MotionToMQTT : public Usermod {
                     mqtt->publish(mqttMotionTopic.c_str(), 0, false, "OFF");
                 }
             }
-        }        
-
-    
+        }
+            
         void loop() {
             currentTime = millis();
             // Check if enough time has passed since system start (motionDelay milliseconds)
@@ -91,15 +92,22 @@ class Usermod_MotionToMQTT : public Usermod {
                         _mqttInitialize();
                         mqttInitialized = true;
                     } 
-                // Update sensor data
+                    // Update sensor data
                     _updateSensorData();  
                 } else {
-                    Serial.println("Missing MQTT connection. Not publishing data");
+                    // Print MQTT connecti on status only once per minute
+                    if (currentTime - lastPrintTime >= printInterval) {
+                        Serial.println("Missing MQTT connection for Motion. Not publishing data");
+                        lastPrintTime = currentTime;
+                    }
                     mqttInitialized = false;
                 }
             } else {
-                // Print this if delay has not passed, useful for debugging
-                Serial.println("Waiting for delay to pass before detecting motion...");
+                // Print delay message only once per minute
+                if (currentTime - lastPrintTime >= printInterval) {
+                    Serial.println("Waiting for delay to pass before detecting motion...");
+                    lastPrintTime = currentTime;
+                }
             }
         }
 
