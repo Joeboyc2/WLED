@@ -64,26 +64,18 @@ class Usermod_MotionToMQTT : public Usermod {
 
         void _updateSensorData() {
             // Detect motion and publish message to MQTT
-            motionDetected = digitalRead(motionInputPin);
-            // If motion is detected, publish message
-            if(motionDetected == HIGH) {
-            // Has motion already been triggered
-                if (!sensorMotion) {
-                    Serial.println("Motion detected!");
-                    sensorMotion = true;
-                    mqtt->publish(mqttMotionTopic.c_str(), 0, false, "ON");
-                    motionStateChange = millis();  // Update when motion is detected
-                } else if (sensorMotion) {
-                    Serial.println("Motion Ended!");
-                    sensorMotion = false;
-                    mqtt->publish(mqttMotionTopic.c_str(), 0, false, "OFF");
-                }
-            } else {
+            bool currentMotionState = digitalRead(motionInputPin) == HIGH;
+
+            if (currentMotionState != sensorMotion) {
+                sensorMotion = currentMotionState;
+                motionStateChange = millis();
+
                 if (sensorMotion) {
-                    Serial.println("Motion Ended!");
-                    sensorMotion = false;
+                    Serial.println("Motion detected!");
+                    mqtt->publish(mqttMotionTopic.c_str(), 0, false, "ON");
+                } else {
+                    Serial.println("Motion ended!");
                     mqtt->publish(mqttMotionTopic.c_str(), 0, false, "OFF");
-                    motionStateChange = millis();  // Update when motion ends
                 }
             }
         }        
