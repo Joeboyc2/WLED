@@ -1,6 +1,14 @@
-name: PlatformIO CI
+name: PlatformIO CI - JoeboyC2
 
-on: [push, pull_request]
+on:
+  push:
+    branches:
+      - master
+      - JoeboyC2_Mods
+  pull_request:
+    branches:
+      - master
+      - JoeboyC2_Mods
 
 jobs:
 
