@@ -11,7 +11,7 @@
 
 class Usermod_MotionToMQTT : public Usermod {
   private:
-        bool motionDetected = false;
+        bool motionDetected = LOW;
         bool sensorMotion = false;
         unsigned long motionStateChange = 0;
         // Delay motion detection, this prevents LEDS's turning on after a reboot
@@ -66,13 +66,13 @@ class Usermod_MotionToMQTT : public Usermod {
 
         void _updateSensorData() {
             // Detect motion and publish message to MQTT
-            bool currentMotionState = digitalRead(motionInputPin) == HIGH;
+            int currentMotionState = digitalRead(motionInputPin);
 
             if (currentMotionState != motionDetected) {
                 motionDetected = currentMotionState;
                 motionStateChange = millis();
 
-                if (motionDetected) {
+                if (motionDetected == HIGH) {
                     Serial.println("Motion detected!");
                     mqtt->publish(mqttMotionTopic.c_str(), 0, false, "ON");
                 } else {
