@@ -6,13 +6,13 @@
 // Motion settings
 // Set MotionPin
 #ifndef motionInputPin
-  #define motionInputPin = 16;
+  #define motionInputPin 16;
 #endif
 
 class Usermod_MotionToMQTT : public Usermod {
   private:
-        bool motionDetected = 0;
-        bool sensorMotion = 0;
+        bool motionDetected = false;
+        bool sensorMotion = false;
         unsigned long motionStateChange = 0;
         // Delay motion detection, this prevents LEDS's turning on after a reboot
         long motionDelay = 40000;
@@ -23,6 +23,7 @@ class Usermod_MotionToMQTT : public Usermod {
         unsigned long nextMeasure = 0;
   public:
         void setup() {
+            startupTime = millis();
             // Motion setup
             Serial.println("Starting Motion!");
             Serial.println("Initialising Motion sensor.. ");
@@ -67,15 +68,15 @@ class Usermod_MotionToMQTT : public Usermod {
         // Detect motion and publish message to MQTT
             motionDetected = digitalRead(motionInputPin);
         // If motion is detected, publish message
-            if(motionDetected == 1) {
+            if(motionDetected == HIGH) {
             // Has motion already been triggered
-                if (sensorMotion == 0) {
+                if (!sensorMotion) {
                     Serial.println("Motion detected!");
-                    sensorMotion = 1;
+                    sensorMotion = true;
                     mqtt->publish(mqttMotionTopic.c_str(), 0, false, "ON");
-                } else if (sensorMotion == 1) {
+                } else if (sensorMotion) {
                     Serial.println("Motion Ended!");
-                    sensorMotion = 0;
+                    sensorMotion = false;
                     mqtt->publish(mqttMotionTopic.c_str(), 0, false, "OFF");
                 }
             }
@@ -88,7 +89,8 @@ class Usermod_MotionToMQTT : public Usermod {
     
         void loop() {
             currentTime = millis();
-            if (currentTime >= motionDelay){
+            // Check if enough time has passed since system start (motionDelay milliseconds)
+            if (currentTime - startupTime >= motionDelay) {
             // Publish reading to JSON & HomeAssistant API 
                 if (mqtt != nullptr && mqtt->connected()) {
                     if (!mqttInitialized) {
@@ -101,6 +103,10 @@ class Usermod_MotionToMQTT : public Usermod {
                     Serial.println("Missing MQTT connection. Not publishing data");
                     mqttInitialized = false;
                 }
+            } else {
+                // Print this if delay has not passed, useful for debugging
+                Serial.println("Waiting for delay to pass before detecting motion...");
+            }
             }
         }
 
@@ -115,7 +121,7 @@ class Usermod_MotionToMQTT : public Usermod {
                 return;
             }
 
-            if (motionDetected == 1){
+            if (motionDetected == HIGH){
                 mot.add(" Motion Detected!");
             }else{
                 mot.add(" No Motion Detected");
