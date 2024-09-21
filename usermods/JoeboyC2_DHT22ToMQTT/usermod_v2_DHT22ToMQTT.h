@@ -25,10 +25,10 @@ DHT dht(DHTPIN, DHTTYPE);
 
 class Usermod_DHT22ToMQTT : public Usermod {
     private:
-        //set last reading as "40 sec before boot", so first reading is taken after 20 sec
+        // Record the last time a measurement was taken
         unsigned long lastMeasurement = 0; // Initialize to 0, will be set in setup()
         bool mqttInitialized = false;
-        float SensorTemperature = NAN;
+        float SensorTemperature = NAN; // Use NAN (not a number) to handle invalid states
         float SensorHumidity = NAN;
         String mqttTemperatureTopic = "";
         String mqttHumidityTopic = "";
@@ -36,24 +36,26 @@ class Usermod_DHT22ToMQTT : public Usermod {
 
     public:
         void setup() {
-            lastMeasurement = millis();  // Initialize lastMeasurement to the boot time
             // DHT Setup
             Serial.println("Starting DHT!");
             Serial.println("Initialising Temperature sensor.. ");
             dht.begin();
+            lastMeasurement = millis();  // Initialize lastMeasurement to the boot time
         }
 
         void _mqttInitialize() {
             Serial.println("Setting up MQTT");
             mqttTemperatureTopic = String(mqttDeviceTopic) + "/temperature";
             mqttHumidityTopic = String(mqttDeviceTopic) + "/humidity";
-
-
-            _createMqttSensor("temperature", mqttTemperatureTopic, "temperature", "°C");
+            #ifdef TEMP_CELSIUS
+                _createMqttSensor("temperature", mqttTemperatureTopic, "temperature", "°C");
+            #else
+                _createMqttSensor("temperature", mqttTemperatureTopic, "temperature", "°F");
+            #endif
             _createMqttSensor("humidity", mqttHumidityTopic, "humidity", "%");
         }
 
-        void _createMqttSensor(const String &name, const String &topic, const String &deviceClass, const String &unitOfMeasurement){
+        void _createMqttSensor(const String &name, const String &topic, const String &deviceClass, const String &unitOfMeasurement) {
             String t = String("homeassistant/sensor/") + mqttClientID + "/" + name + "/config";
 
             StaticJsonDocument<300> doc;
@@ -83,39 +85,38 @@ class Usermod_DHT22ToMQTT : public Usermod {
         }
 
         void _updateSensorData() {
-            // Read the temperature and humidity, this can take between 250 milli to 2 seconds
+            // Read the temperature and humidity (DHT can take 250ms - 2s to read)
             SensorHumidity = dht.readHumidity();
             #ifdef TEMP_CELSIUS
                 SensorTemperature = dht.readTemperature();
             #else
-                SensorTemperature = dht.readTemperature(true);
+                SensorTemperature = dht.readTemperature(true);  // Fahrenheit
             #endif
+
             // Check if any reads failed and exit
             if (isnan(SensorHumidity) || isnan(SensorTemperature)) {
-        // Log Error to console
                 Serial.println("Failed to read the DHT Sensor");
                 return;
             }
-            Serial.printf("Temperature and Humidity read successful\n %f °C, %f ",
-                        SensorTemperature, SensorHumidity);
-        }
-        // gets called every time WiFi is (re-)connected.
-        void connected() {
-            nextMeasure = millis() + 5000; // Schedule next measure in 5 seconds
+            Serial.printf("Temperature and Humidity read successfully\n %f °C, %f %%\n",
+                          SensorTemperature, SensorHumidity);
         }
 
         void loop() {
             currentTime = millis();
             if (currentTime - lastMeasurement >= MEASUREMENT_INTERVAL) {
                 lastMeasurement = currentTime;  // Update time for the next reading
+                
                 // Check if MQTT is connected
                 if (mqtt != nullptr && mqtt->connected()) {
                     if (!mqttInitialized) {
                         _mqttInitialize();
                         mqttInitialized = true;
                     }
+
                     // Update sensor data
                     _updateSensorData();
+
                     // Publish temperature and humidity to MQTT
                     if (!isnan(SensorTemperature) && !isnan(SensorHumidity)) {
                         mqtt->publish(mqttTemperatureTopic.c_str(), 0, false, String(SensorTemperature).c_str());

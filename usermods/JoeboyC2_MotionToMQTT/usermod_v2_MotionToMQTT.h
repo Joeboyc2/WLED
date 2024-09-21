@@ -6,7 +6,7 @@
 // Motion settings
 // Set MotionPin
 #ifndef motionInputPin
-  #define motionInputPin 16;
+  #define motionInputPin 16
 #endif
 
 class Usermod_MotionToMQTT : public Usermod {
@@ -20,7 +20,7 @@ class Usermod_MotionToMQTT : public Usermod {
         unsigned long currentTime = 0;
         bool mqttInitialized = false;
         String mqttMotionTopic = "";
-        unsigned long nextMeasure = 0;
+        unsigned long startupTime;
   public:
         void setup() {
             startupTime = millis();
@@ -32,9 +32,7 @@ class Usermod_MotionToMQTT : public Usermod {
 
         void _mqttInitialize() {
             mqttMotionTopic = String(mqttDeviceTopic) + "/motion";
-
             String m = String("homeassistant/binary_sensor/") + mqttClientID + "/motion/config";
-
             _createMqttSensor("motion", mqttMotionTopic, "motion");
         }
 
@@ -65,27 +63,31 @@ class Usermod_MotionToMQTT : public Usermod {
         }
 
         void _updateSensorData() {
-        // Detect motion and publish message to MQTT
+            // Detect motion and publish message to MQTT
             motionDetected = digitalRead(motionInputPin);
-        // If motion is detected, publish message
+            // If motion is detected, publish message
             if(motionDetected == HIGH) {
             // Has motion already been triggered
                 if (!sensorMotion) {
                     Serial.println("Motion detected!");
                     sensorMotion = true;
                     mqtt->publish(mqttMotionTopic.c_str(), 0, false, "ON");
+                    motionStateChange = millis();  // Update when motion is detected
                 } else if (sensorMotion) {
                     Serial.println("Motion Ended!");
                     sensorMotion = false;
                     mqtt->publish(mqttMotionTopic.c_str(), 0, false, "OFF");
                 }
+            } else {
+                if (sensorMotion) {
+                    Serial.println("Motion Ended!");
+                    sensorMotion = false;
+                    mqtt->publish(mqttMotionTopic.c_str(), 0, false, "OFF");
+                    motionStateChange = millis();  // Update when motion ends
+                }
             }
         }        
 
-        // gets called every time WiFi is (re-)connected.
-        void connected() {
-            nextMeasure = millis() + 5000; // Schedule next measure in 5 seconds
-        }
     
         void loop() {
             currentTime = millis();
@@ -107,10 +109,10 @@ class Usermod_MotionToMQTT : public Usermod {
                 // Print this if delay has not passed, useful for debugging
                 Serial.println("Waiting for delay to pass before detecting motion...");
             }
-            }
         }
 
         void addToJsonInfo(JsonObject& root) {
+
             JsonObject user = root["u"];
             if (user.isNull()) user = root.createNestedObject("u");
 
