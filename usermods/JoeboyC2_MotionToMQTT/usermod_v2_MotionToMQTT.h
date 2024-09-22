@@ -67,17 +67,22 @@ class Usermod_MotionToMQTT : public Usermod {
             // Detect motion and publish message to MQTT
             int currentMotionState = digitalRead(motionInputPin);
             
-            if (currentMotionState != motionDetected) {
+            if (currentMotionState != motionDetected || (currentTime - motionStateChange >= 60000)) {
                 motionDetected = currentMotionState;
-                motionStateChange = millis();
+                motionStateChange = currentTime;
 
                 const char* motionStatus = (motionDetected == HIGH) ? "ON" : "OFF";
-                Serial.printf("Motion %s!\n", motionStatus);
+                
+                if (currentTime - lastPrintTime >= printInterval) {
+                    Serial.printf("Motion %s!\n", motionStatus);
+                    lastPrintTime = currentTime;
+                }
 
                 if (mqtt != nullptr && mqtt->connected()) {
                     mqtt->publish(mqttMotionTopic.c_str(), 0, true, motionStatus);
-                } else {
+                } else if (currentTime - lastPrintTime >= printInterval) {
                     Serial.println("MQTT not connected. Unable to publish motion status.");
+                    lastPrintTime = currentTime;
                 }
             }
         }
