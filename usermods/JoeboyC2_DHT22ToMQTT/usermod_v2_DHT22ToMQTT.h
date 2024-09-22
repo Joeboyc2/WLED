@@ -87,26 +87,46 @@ class Usermod_DHT22ToMQTT : public Usermod {
         }
 
         void _updateSensorData() {
-            // Read the temperature and humidity (DHT can take 250ms - 2s to read)
-            SensorHumidity = dht.readHumidity();
+            // Read temperature and humidity (DHT can take 250ms - 2s to read)
+            float newHumidity = dht.readHumidity();
+            float newTemperature;
             #ifdef TEMP_CELSIUS
-                SensorTemperature = dht.readTemperature();
+                newTemperature = dht.readTemperature();
             #else
-                SensorTemperature = dht.readTemperature(true);  // Fahrenheit
+                newTemperature = dht.readTemperature(true);  // Fahrenheit
             #endif
 
-            // Check if any reads failed and exit
-            if (isnan(SensorHumidity) || isnan(SensorTemperature)) {
-                if (currentTime - lastPrintTime >= printInterval) {
-                    Serial.println("Failed to read the DHT Sensor");
-                    lastPrintTime = currentTime;
-                }
+            // Check if reads failed and handle errors
+            if (isnan(newHumidity) || isnan(newTemperature)) {
+                handleSensorReadError();
                 return;
             }
-            // Only print successful readings once per minute
+
+            // Update sensor values if read was successful
+            SensorHumidity = newHumidity;
+            SensorTemperature = newTemperature;
+
+            // Log successful readings periodically
+            logSuccessfulReading();
+        }
+
+        void handleSensorReadError() {
             if (currentTime - lastPrintTime >= printInterval) {
-                Serial.printf("Temperature and Humidity read successfully\n %f °C, %f %%\n",
-                              SensorTemperature, SensorHumidity);
+                Serial.println("Error: Failed to read from DHT sensor");
+                lastPrintTime = currentTime;
+            }
+        }
+
+        void logSuccessfulReading() {
+            if (currentTime - lastPrintTime >= printInterval) {
+                Serial.printf("Temperature and Humidity read successfully: %.2f %s, %.2f%%\n",
+                              SensorTemperature,
+                              #ifdef TEMP_CELSIUS
+                                  "°C"
+                              #else
+                                  "°F"
+                              #endif,
+                              SensorHumidity);
                 lastPrintTime = currentTime;
             }
         }
@@ -116,28 +136,33 @@ class Usermod_DHT22ToMQTT : public Usermod {
             if (currentTime - lastMeasurement >= MEASUREMENT_INTERVAL) {
                 lastMeasurement = currentTime;  // Update time for the next reading
                 
-                // Check if MQTT is connected
+                _updateSensorData();
+
                 if (mqtt != nullptr && mqtt->connected()) {
                     if (!mqttInitialized) {
                         _mqttInitialize();
                         mqttInitialized = true;
                     }
 
-                    // Update sensor data
-                    _updateSensorData();
-
-                    // Publish temperature and humidity to MQTT
                     if (!isnan(SensorTemperature) && !isnan(SensorHumidity)) {
-                        mqtt->publish(mqttTemperatureTopic.c_str(), 0, false, String(SensorTemperature).c_str());
-                        mqtt->publish(mqttHumidityTopic.c_str(), 0, false, String(SensorHumidity).c_str());
+                        char tempStr[10], humidStr[10];
+                        dtostrf(SensorTemperature, 1, 2, tempStr);
+                        dtostrf(SensorHumidity, 1, 2, humidStr);
+                        
+                        mqtt->publish(mqttTemperatureTopic.c_str(), 0, true, tempStr);
+                        mqtt->publish(mqttHumidityTopic.c_str(), 0, true, humidStr);
+                        
+                        if (currentTime - lastPrintTime >= printInterval) {
+                            Serial.printf("Published to MQTT - Temperature: %s, Humidity: %s\n", tempStr, humidStr);
+                            lastPrintTime = currentTime;
+                        }
                     }
                 } else {
-                    // Print MQTT connection status only once per minute
                     if (currentTime - lastPrintTime >= printInterval) {
-                        Serial.println("Missing MQTT connection for DHT22. Not publishing data");
+                        Serial.println("MQTT disconnected. Unable to publish DHT22 data.");
                         lastPrintTime = currentTime;
+                        mqttInitialized = false;
                     }
-                    mqttInitialized = false;
                 }
             }
         }
@@ -147,24 +172,29 @@ class Usermod_DHT22ToMQTT : public Usermod {
             if (user.isNull()) user = root.createNestedObject("u");
 
             JsonArray temp = user.createNestedArray("Temperature");
-            if (isnan(SensorTemperature)) {
-                temp.add(" Sensor Error!");
-            } else {
-                temp.add(SensorTemperature);
-                #ifdef TEMP_CELSIUS
-                    temp.add("°C");
-                #else
-                    temp.add("°F");
-                #endif
-            }
-
             JsonArray humid = user.createNestedArray("Humidity");
-            if (isnan(SensorHumidity)) {
-                humid.add(" Sensor Error!");
+
+            if (isnan(SensorTemperature) || isnan(SensorHumidity)) {
+                temp.add("Sensor Error!");
+                humid.add("Sensor Error!");
             } else {
-                humid.add(SensorHumidity);
+                char tempStr[10], humidStr[10];
+                dtostrf(SensorTemperature, 1, 2, tempStr);
+                dtostrf(SensorHumidity, 1, 2, humidStr);
+
+                temp.add(tempStr);
+                temp.add(TEMP_CELSIUS ? "°C" : "°F");
+
+                humid.add(humidStr);
                 humid.add("%");
             }
+
+            // Add last measurement time
+            JsonArray lastMeasure = user.createNestedArray("Last Measurement");
+            char timeStr[20];
+            unsigned long elapsedTime = (currentTime - lastMeasurement) / 1000; // Convert to seconds
+            sprintf(timeStr, "%lu seconds ago", elapsedTime);
+            lastMeasure.add(timeStr);
         }
 
         uint16_t getId(){

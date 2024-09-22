@@ -12,7 +12,6 @@
 class Usermod_MotionToMQTT : public Usermod {
   private:
         bool motionDetected = LOW;
-        bool sensorMotion = false;
         unsigned long motionStateChange = 0;
         // Delay motion detection, this prevents LEDS's turning on after a reboot
         long motionDelay = 40000;
@@ -67,17 +66,18 @@ class Usermod_MotionToMQTT : public Usermod {
         void _updateSensorData() {
             // Detect motion and publish message to MQTT
             int currentMotionState = digitalRead(motionInputPin);
-
+            
             if (currentMotionState != motionDetected) {
                 motionDetected = currentMotionState;
                 motionStateChange = millis();
 
-                if (motionDetected == HIGH) {
-                    Serial.println("Motion detected!");
-                    mqtt->publish(mqttMotionTopic.c_str(), 0, false, "ON");
+                const char* motionStatus = (motionDetected == HIGH) ? "ON" : "OFF";
+                Serial.printf("Motion %s!\n", motionStatus);
+
+                if (mqtt != nullptr && mqtt->connected()) {
+                    mqtt->publish(mqttMotionTopic.c_str(), 0, true, motionStatus);
                 } else {
-                    Serial.println("Motion ended!");
-                    mqtt->publish(mqttMotionTopic.c_str(), 0, false, "OFF");
+                    Serial.println("MQTT not connected. Unable to publish motion status.");
                 }
             }
         }
@@ -86,16 +86,17 @@ class Usermod_MotionToMQTT : public Usermod {
             currentTime = millis();
             // Check if enough time has passed since system start (motionDelay milliseconds)
             if (currentTime - startupTime >= motionDelay) {
-            // Publish reading to JSON & HomeAssistant API 
+                // Update sensor data
+                _updateSensorData();  
+
+                // Publish reading to JSON & HomeAssistant API 
                 if (mqtt != nullptr && mqtt->connected()) {
                     if (!mqttInitialized) {
                         _mqttInitialize();
                         mqttInitialized = true;
                     } 
-                    // Update sensor data
-                    _updateSensorData();  
                 } else {
-                    // Print MQTT connecti on status only once per minute
+                    // Print MQTT connection status only once per minute
                     if (currentTime - lastPrintTime >= printInterval) {
                         Serial.println("Missing MQTT connection for Motion. Not publishing data");
                         lastPrintTime = currentTime;
@@ -115,20 +116,24 @@ class Usermod_MotionToMQTT : public Usermod {
             JsonObject user = root["u"];
             if (user.isNull()) user = root.createNestedObject("u");
 
-            JsonArray mot = user.createNestedArray("Motion");
             // Add Motion state to Json API
-            if (motionDetected) {
-                mot.add("Motion Detected!");
+            JsonArray motionState = user.createNestedArray("Motion State");
+            motionState.add(motionDetected ? "Detected" : "Not Detected");
+
+            // Add Last Motion Event to Json API
+            JsonArray lastMotionEvent = user.createNestedArray("Last Motion Event");
+            if (motionStateChange == 0) {
+                lastMotionEvent.add("No motion detected yet");
             } else {
-                mot.add("No Motion Detected");
+                char timeStr[20];
+                unsigned long elapsedTime = (currentTime - motionStateChange) / 1000; // Convert to seconds
+                sprintf(timeStr, "%lu seconds ago", elapsedTime);
+                lastMotionEvent.add(timeStr);
             }
 
-            JsonArray lastmot = user.createNestedArray("Last Motion Event");
-            if (motionStateChange == 0) {
-                lastmot.add("No Motion Yet");
-            } else {
-                lastmot.add(motionStateChange);
-            }
+            // Add Motion Input Pin to Json API
+            JsonArray motionPin = user.createNestedArray("Motion Sensor Pin");
+            motionPin.add(motionInputPin);
         }
 
         uint16_t getId(){
