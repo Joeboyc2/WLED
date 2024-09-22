@@ -122,10 +122,10 @@ class Usermod_DHT22ToMQTT : public Usermod {
                 Serial.printf("Temperature and Humidity read successfully: %.2f %s, %.2f%%\n",
                               SensorTemperature,
                               #ifdef TEMP_CELSIUS
-                                  "°C"
+                                  "°C",
                               #else
-                                  "°F"
-                              #endif,
+                                  "°F",
+                              #endif
                               SensorHumidity);
                 lastPrintTime = currentTime;
             }
@@ -183,7 +183,11 @@ class Usermod_DHT22ToMQTT : public Usermod {
                 dtostrf(SensorHumidity, 1, 2, humidStr);
 
                 temp.add(tempStr);
-                temp.add(TEMP_CELSIUS ? "°C" : "°F");
+                #ifdef TEMP_CELSIUS
+                temp.add("°C");
+                #else
+                temp.add("°F");
+                #endif
 
                 humid.add(humidStr);
                 humid.add("%");

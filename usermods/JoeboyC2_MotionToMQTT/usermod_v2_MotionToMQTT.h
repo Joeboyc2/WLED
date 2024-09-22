@@ -14,7 +14,7 @@ class Usermod_MotionToMQTT : public Usermod {
         bool motionDetected = LOW;
         unsigned long motionStateChange = 0;
         // Delay motion detection, this prevents LEDS's turning on after a reboot
-        long motionDelay = 40000;
+        long motionDelay = 60000;
         // Variable to capture the current time in the loop
         unsigned long currentTime = 0;
         bool mqttInitialized = false;
