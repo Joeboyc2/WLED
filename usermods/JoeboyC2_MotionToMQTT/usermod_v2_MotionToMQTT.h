@@ -14,7 +14,7 @@ class Usermod_MotionToMQTT : public Usermod {
         bool motionDetected = LOW;
         unsigned long motionStateChange = 0;
         // Delay motion detection, this prevents LEDS's turning on after a reboot
-        long motionDelay = 60000;
+        long motionDelay = 60000; // 1 minute delay
         // Variable to capture the current time in the loop
         unsigned long currentTime = 0;
         bool mqttInitialized = false;
@@ -33,7 +33,6 @@ class Usermod_MotionToMQTT : public Usermod {
 
         void _mqttInitialize() {
             mqttMotionTopic = String(mqttDeviceTopic) + "/motion";
-            String m = String("homeassistant/binary_sensor/") + mqttClientID + "/motion/config";
             _createMqttSensor("motion", mqttMotionTopic, "motion");
         }
 
@@ -67,41 +66,37 @@ class Usermod_MotionToMQTT : public Usermod {
             // Detect motion and publish message to MQTT
             int currentMotionState = digitalRead(motionInputPin);
             
-            if (currentMotionState != motionDetected || (currentTime - motionStateChange >= 60000)) {
+            if (currentMotionState != motionDetected) {
                 motionDetected = currentMotionState;
                 motionStateChange = currentTime;
 
                 const char* motionStatus = (motionDetected == HIGH) ? "ON" : "OFF";
-                
-                if (currentTime - lastPrintTime >= printInterval) {
-                    Serial.printf("Motion %s!\n", motionStatus);
-                    lastPrintTime = currentTime;
-                }
+                Serial.printf("Motion %s!\n", motionStatus);
 
                 if (mqtt != nullptr && mqtt->connected()) {
                     mqtt->publish(mqttMotionTopic.c_str(), 0, true, motionStatus);
-                } else if (currentTime - lastPrintTime >= printInterval) {
+                } else {
                     Serial.println("MQTT not connected. Unable to publish motion status.");
-                    lastPrintTime = currentTime;
                 }
             }
         }
             
         void loop() {
             currentTime = millis();
+            
             // Check if enough time has passed since system start (motionDelay milliseconds)
             if (currentTime - startupTime >= motionDelay) {
                 // Update sensor data
                 _updateSensorData();  
 
-                // Publish reading to JSON & HomeAssistant API 
+                // Check MQTT connection and initialize if necessary
                 if (mqtt != nullptr && mqtt->connected()) {
                     if (!mqttInitialized) {
                         _mqttInitialize();
                         mqttInitialized = true;
                     } 
                 } else {
-                    // Print MQTT connection status only once per minute
+                    // Handle MQTT disconnection
                     if (currentTime - lastPrintTime >= printInterval) {
                         Serial.println("Missing MQTT connection for Motion. Not publishing data");
                         lastPrintTime = currentTime;
