@@ -1,0 +1,41 @@
+name: Sync Upstream
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to sync with upstream'
+        required: true
+        default: 'main'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set Up Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Add Upstream Remote
+        run: |
+          git remote add upstream https://github.com/Aircoookie/WLED.git || echo "Upstream already exists"
+          git fetch upstream --tags
+
+      - name: Sync Latest Release
+        run: |
+          latest_tag=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n 1)
+          git checkout ${{ github.event.inputs.branch }}
+          git merge upstream/$latest_tag
+          git push origin ${{ github.event.inputs.branch }}
+
+      - name: Merge Into Custom Branch
+        run: |
+          git checkout JoeboyC2_Mods
+          git merge ${{ github.event.inputs.branch }}
+          git push origin JoeboyC2_Mods
