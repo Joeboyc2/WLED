@@ -226,6 +226,11 @@ class UsermodDHTtoMQTT : public Usermod {
       oappend(enabled ? "true" : "false");
       oappend(SET_F("});"));
 
+      // Add temperature unit selector
+      oappend(SET_F("addInfo('DHT:celsius',{type:'bool',caption:'Use Celsius',val:"));
+      oappend(useCelsius ? "true" : "false");
+      oappend(SET_F("});"));
+
       // Add pin selector
       oappend(SET_F("addInfo('DHT:pin',{type:'number',caption:'DHT Pin',min:0,max:40,val:"));
       oappend(String(dhtPin).c_str());
@@ -239,11 +244,6 @@ class UsermodDHTtoMQTT : public Usermod {
       oappend(SET_F("dd.value="));
       oappend(String(dhtType).c_str());
       oappend(SET_F(";"));
-
-      // Add temperature unit selector
-      oappend(SET_F("addInfo('DHT:celsius',{type:'bool',caption:'Use Celsius',val:"));
-      oappend(useCelsius ? "true" : "false");
-      oappend(SET_F("});"));
 
       // Add measurement interval input (in seconds)
       oappend(SET_F("addInfo('DHT:interval',{type:'number',caption:'Measurement Interval (seconds)',min:10,max:300,val:"));
@@ -263,9 +263,9 @@ class UsermodDHTtoMQTT : public Usermod {
 
       if (!initDone) {
         enabled = top[FPSTR("enabled")] | enabled;
+        useCelsius = top[FPSTR("celsius")] | useCelsius;
         dhtPin = top[FPSTR("pin")] | dhtPin;
         dhtType = top[FPSTR("type")] | dhtType;
-        useCelsius = top[FPSTR("celsius")] | useCelsius;
         
         // Read interval in seconds and convert to milliseconds
         uint32_t intervalSeconds = top[FPSTR("interval")] | (measurementInterval / 1000);
@@ -276,6 +276,8 @@ class UsermodDHTtoMQTT : public Usermod {
         
         initDone = true;
       } else {
+        if (!top[FPSTR("enabled")].isNull()) enabled = top[FPSTR("enabled")] | enabled;
+        if (!top[FPSTR("celsius")].isNull()) useCelsius = top[FPSTR("celsius")] | useCelsius;
         if (!top[FPSTR("pin")].isNull()) {
           dhtPin = top[FPSTR("pin")] | dhtPin;
           if (dht_sensor) delete dht_sensor;
@@ -286,8 +288,6 @@ class UsermodDHTtoMQTT : public Usermod {
           if (dht_sensor) delete dht_sensor;
           dht_sensor = new DHT_nonblocking(dhtPin, dhtType);
         }
-        if (!top[FPSTR("enabled")].isNull()) enabled = top[FPSTR("enabled")] | enabled;
-        if (!top[FPSTR("celsius")].isNull()) useCelsius = top[FPSTR("celsius")] | useCelsius;
         if (!top[FPSTR("interval")].isNull()) {
           // Read interval in seconds and convert to milliseconds
           uint32_t intervalSeconds = top[FPSTR("interval")] | (measurementInterval / 1000);
@@ -301,9 +301,9 @@ class UsermodDHTtoMQTT : public Usermod {
     void addToConfig(JsonObject& root) {
       JsonObject top = root.createNestedObject(F("DHT"));
       top[FPSTR("enabled")] = enabled;
+      top[FPSTR("celsius")] = useCelsius;
       top[FPSTR("pin")] = dhtPin;
       top[FPSTR("type")] = dhtType;
-      top[FPSTR("celsius")] = useCelsius;
       top[FPSTR("interval")] = measurementInterval / 1000;  // Store in seconds
     }
 

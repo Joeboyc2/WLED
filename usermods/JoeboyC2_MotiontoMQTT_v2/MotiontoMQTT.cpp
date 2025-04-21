@@ -179,34 +179,32 @@ class UsermodMotionToMQTT : public Usermod {
         // first time init
         uint8_t newMotionPin = motionPin;
         newMotionPin = top[FPSTR("pin")] | motionPin;
+        
+        enabled = top[FPSTR("enabled")] | enabled;
 
         if (newMotionPin != motionPin) {
           motionPin = newMotionPin;
           pinMode(motionPin, INPUT);
         }
 
-        enabled = top[FPSTR("enabled")] | enabled;
-
         initDone = true;
       } else {
         // changing config
+        if (!top[FPSTR("enabled")].isNull()) {
+          enabled = top[FPSTR("enabled")] | enabled;
+        }
         if (!top[FPSTR("pin")].isNull()) {
           motionPin = top[FPSTR("pin")] | motionPin;
           pinMode(motionPin, INPUT);
         }
-
-        if (!top[FPSTR("enabled")].isNull()) {
-          enabled = top[FPSTR("enabled")] | enabled;
-        }
       }
-      
       return configComplete;
     }
 
     void addToConfig(JsonObject& root) {
       JsonObject top = root.createNestedObject(F("Motion"));
-      top[FPSTR("pin")] = motionPin;
       top[FPSTR("enabled")] = enabled;
+      top[FPSTR("pin")] = motionPin;
     }
 
     uint16_t getId() {
