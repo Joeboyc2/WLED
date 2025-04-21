@@ -156,12 +156,12 @@ class UsermodMotionToMQTT : public Usermod {
     }
 
     void appendConfigData() {
-      oappend(SET_F("addInfo('Motion-cfg',{type:'number',caption:'Motion Pin',min:0,max:40,val:"));
-      oappend(String(motionPin).c_str());
+      oappend(SET_F("addInfo('Motion-en',{type:'bool',caption:'Enabled?',val:"));
+      oappend(enabled ? "true" : "false");
       oappend(SET_F("});"));
 
-      oappend(SET_F("addInfo('Motion-en',{type:'bool',caption:'Enabled',val:"));
-      oappend(enabled ? "true" : "false");
+      oappend(SET_F("addInfo('Motion-cfg',{type:'number',caption:'Motion_Pin',min:0,max:40,val:"));
+      oappend(String(motionPin).c_str());
       oappend(SET_F("});"));
     }
 
