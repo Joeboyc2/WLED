@@ -77,7 +77,9 @@ public:
     }
     if (m_updateConfig)
     {
-      serializeConfig();
+      DynamicJsonDocument doc(1024); // Adjust size as needed
+      JsonObject json = doc.to<JsonObject>();
+      serializeConfig(json);
       m_updateConfig = false;
     }
   }

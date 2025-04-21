@@ -1,0 +1,9 @@
+{
+  "name:": "JoeboyC2_DHTtoMQTT_v2",
+  "build": { 
+    "libArchive": false
+  },
+  "dependencies": {
+    "DHT_nonblocking":"https://github.com/alwynallan/DHT_nonblocking"
+  }
+}

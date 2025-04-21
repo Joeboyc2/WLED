@@ -1,4 +1,4 @@
-# Temperature usermod
+# DHTtoMQTT usermod
 
 Reads an attached DHT11,21,22, the temperature and humidity valueswill be  displayed in both the Info section of the web UI as well as published to the `/temperature` & `/humidity` MQTT topics, if enabled.  
 
@@ -8,7 +8,7 @@ Maintained by @joeboyc2
 
 ## Installation
 
-Add `DHTtoMQTT` to `custom_usermods` in your platformio_override.ini.
+Add `DHTtoMQTT` to `custom_usermods` in your platformio_override.ini
 
 Example **platformio_override.ini**:
 
