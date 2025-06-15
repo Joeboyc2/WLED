@@ -605,7 +605,7 @@ void WLED::initAP(bool resetAP)
 
 void WLED::initConnection()
 {
-  DEBUG_PRINTLN(F("initConnection() called."));
+  DEBUG_PRINTF_P(PSTR("initConnection() called @ %lus.\n"), millis()/1000);
 
   #ifdef WLED_ENABLE_WEBSOCKETS
   ws.onEvent(wsEvent);
