@@ -60,6 +60,8 @@ class UsermodDHTtoMQTT : public Usermod {
     float temperature = 0;
     bool initializing = true;
     bool disabled = false;
+    bool sensorOnline = false;  // Added missing variable
+    static uint8_t stuckCount;  // Added static counter
     char mqttTempTopic[64];
     char mqttHumidTopic[64];
     bool mqttInitialized = false;
@@ -90,7 +92,6 @@ class UsermodDHTtoMQTT : public Usermod {
         if (!isnan(lastTemp)) {
             if (temp == lastTemp && humidity == lastHumidity) {
                 // Increment stuck counter
-                static uint8_t stuckCount = 0;
                 if (++stuckCount >= 3) {
                     DEBUG_PRINTLN(F("DHT22: Sensor appears stuck"));
                     return false;
@@ -109,19 +110,17 @@ class UsermodDHTtoMQTT : public Usermod {
     bool readAndValidateSensor() {
         // Try reading sensor up to 3 times
         for (uint8_t i = 0; i < 3; i++) {
-            float newTemp = dht.readTemperature(
-                #ifndef TEMP_CELSIUS
-                true  // Fahrenheit if TEMP_CELSIUS not defined
-                #endif
-            );
-            float newHumidity = dht.readHumidity();
+            float newTemp;
+            float newHumidity;
             
-            if (validateSensorReading(newTemp, newHumidity)) {
-                temperature = newTemp;
-                humidity = newHumidity;
-                sensorOnline = true;
-                lastReadTime = millis();
-                return true;
+            if (dht_sensor->measure(&newTemp, &newHumidity)) {  // Fixed to use dht_sensor
+                if (validateSensorReading(newTemp, newHumidity)) {
+                    temperature = useCelsius ? newTemp : (newTemp * 9.0f / 5.0f + 32.0f);
+                    humidity = newHumidity;
+                    sensorOnline = true;
+                    lastReadTime = millis();
+                    return true;
+                }
             }
             
             // Wait 2 seconds between retries
@@ -367,6 +366,9 @@ class UsermodDHTtoMQTT : public Usermod {
       return USERMOD_ID_DHT;
     }
 };
+
+// Add static member definition outside the class
+uint8_t UsermodDHTtoMQTT::stuckCount = 0;
 
 static UsermodDHTtoMQTT dhtMqtt;
 REGISTER_USERMOD(dhtMqtt);
