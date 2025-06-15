@@ -51,7 +51,10 @@ class UsermodMotionToMQTT : public Usermod {
     }
 
     void loop() {
-      if (!enabled || disabled) return;
+      if (!enabled || disabled) {
+        updateAvailability();  // Report as unavailable if disabled
+        return;
+      }
       if (millis() < nextReadTime) return;
 
       bool currentState = digitalRead(motionPin);
@@ -86,26 +89,35 @@ class UsermodMotionToMQTT : public Usermod {
       if ((millis() - lastSuccessfulRead) > ERROR_TIMEOUT) {
         sensorError = true;
         DEBUG_PRINTLN(F("Motion sensor not responding!"));
-        if (WLED_MQTT_CONNECTED) {
-          mqtt->publish(mqttMotionTopic, 0, true, "error");
-        }
+        updateAvailability();  // Report as unavailable
+      } else if (sensorError) {  // If recovering from error
+        sensorError = false;
+        updateAvailability();  // Report as available
       }
-
+      
       nextReadTime = millis() + MOTION_MEASUREMENT_INTERVAL;
       initializing = false;
     }
 
     void publishMqttDeviceConfig() {
       char configTopic[128];
+      char availabilityTopic[64];
       snprintf(configTopic, sizeof(configTopic), 
                "homeassistant/binary_sensor/%s/motion/config", mqttClientID);
+      snprintf(availabilityTopic, sizeof(availabilityTopic), 
+               "%s/status", mqttDeviceTopic);
 
-      StaticJsonDocument<300> doc;
+      StaticJsonDocument<400> doc;  // Increased size for additional fields
       doc["name"] = "motion";
       doc["state_topic"] = mqttMotionTopic;
       doc["unique_id"] = String(mqttClientID) + "motion";
       doc["device_class"] = "motion";
       doc["expire_after"] = 1800;
+      
+      // Add availability configuration
+      doc["availability_topic"] = availabilityTopic;
+      doc["payload_available"] = "online";
+      doc["payload_not_available"] = "offline";
 
       JsonObject device = doc.createNestedObject("device");
       device["identifiers"] = String("wled-") + mqttClientID;
@@ -117,6 +129,21 @@ class UsermodMotionToMQTT : public Usermod {
       String configJson;
       serializeJson(doc, configJson);
       mqtt->publish(configTopic, 0, true, configJson.c_str());
+      
+      // Publish initial availability state
+      mqtt->publish(availabilityTopic, 0, true, "online");
+    }
+
+    // Add this new method to handle availability updates
+    void updateAvailability() {
+      if (!WLED_MQTT_CONNECTED) return;
+      
+      char availabilityTopic[64];
+      snprintf(availabilityTopic, sizeof(availabilityTopic), 
+               "%s/status", mqttDeviceTopic);
+               
+      const char* state = (enabled && !disabled && !sensorError) ? "online" : "offline";
+      mqtt->publish(availabilityTopic, 0, true, state);
     }
 
     void publishSensorData() {

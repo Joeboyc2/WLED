@@ -77,6 +77,62 @@ class UsermodDHTtoMQTT : public Usermod {
     bool sensorError = false;
     bool hadSuccessfulRead = false;  // Track if we've ever had a successful reading
 
+    // Add validation tracking
+    bool validateSensorReading(float temp, float humidity) {
+        // Check for invalid/out of range readings
+        if (isnan(temp) || isnan(humidity)) return false;
+        if (temp < -40.0f || temp > 80.0f) return false;  // DHT22 temp range
+        if (humidity < 0.0f || humidity > 100.0f) return false;  // Valid humidity range
+        
+        // Check for stuck readings (if we have previous valid readings)
+        static float lastTemp = NAN;
+        static float lastHumidity = NAN;
+        if (!isnan(lastTemp)) {
+            if (temp == lastTemp && humidity == lastHumidity) {
+                // Increment stuck counter
+                static uint8_t stuckCount = 0;
+                if (++stuckCount >= 3) {
+                    DEBUG_PRINTLN(F("DHT22: Sensor appears stuck"));
+                    return false;
+                }
+            } else {
+                stuckCount = 0;  // Reset stuck counter on different readings
+            }
+        }
+        
+        // Store values for next comparison
+        lastTemp = temp;
+        lastHumidity = humidity;
+        return true;
+    }
+
+    bool readAndValidateSensor() {
+        // Try reading sensor up to 3 times
+        for (uint8_t i = 0; i < 3; i++) {
+            float newTemp = dht.readTemperature(
+                #ifndef TEMP_CELSIUS
+                true  // Fahrenheit if TEMP_CELSIUS not defined
+                #endif
+            );
+            float newHumidity = dht.readHumidity();
+            
+            if (validateSensorReading(newTemp, newHumidity)) {
+                temperature = newTemp;
+                humidity = newHumidity;
+                sensorOnline = true;
+                lastReadTime = millis();
+                return true;
+            }
+            
+            // Wait 2 seconds between retries
+            delay(2000);
+        }
+        
+        if (sensorOnline) DEBUG_PRINTLN(F("DHT22: Failed to read valid data"));
+        sensorOnline = false;
+        return false;
+    }
+
   public:
     void setup() {
       if (dht_sensor) delete dht_sensor;
