@@ -423,7 +423,7 @@ void WLED::setup()
   multiWiFi.push_back(WiFiConfig(CLIENT_SSID,CLIENT_PASS)); // initialise vector with default WiFi
 
   DEBUG_PRINTLN(F("Reading config"));
-  deserializeConfigFromFS();
+  bool needsCfgSave = deserializeConfigFromFS();
   DEBUG_PRINTF_P(PSTR("heap %u\n"), ESP.getFreeHeap());
 
 #if defined(STATUSLED) && STATUSLED>=0
@@ -442,6 +442,8 @@ void WLED::setup()
   userSetup();
   UsermodManager::setup();
   DEBUG_PRINTF_P(PSTR("heap %u\n"), ESP.getFreeHeap());
+
+  if (needsCfgSave) serializeConfig(); // usermods required new parameters; need to wait for strip to be initialised #4752
 
   if (strcmp(multiWiFi[0].clientSSID, DEFAULT_CLIENT_SSID) == 0)
     showWelcomePage = true;
@@ -605,8 +607,16 @@ void WLED::initAP(bool resetAP)
 
 void WLED::initConnection()
 {
+<<<<<<< HEAD
   DEBUG_PRINTLN(F("initConnection() called."));
 
+=======
+  DEBUG_PRINTF_P(PSTR("initConnection() called @ %lus.\n"), millis()/1000);
+<<<<<<< HEAD
+=======
+
+>>>>>>> v0.15.1
+>>>>>>> main
   #ifdef WLED_ENABLE_WEBSOCKETS
   ws.onEvent(wsEvent);
   #endif

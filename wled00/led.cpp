@@ -85,7 +85,11 @@ void applyFinalBri() {
   briOld = bri;
   briT = bri;
   applyBri();
+<<<<<<< HEAD
   strip.trigger(); // force one last update
+=======
+  strip.trigger();
+>>>>>>> v0.15.1
 }
 
 
@@ -134,7 +138,10 @@ void stateUpdated(byte callMode) {
     jsonTransitionOnce = false;
     transitionActive = false;
     applyFinalBri();
+<<<<<<< HEAD
     return;
+=======
+>>>>>>> v0.15.1
   }
 
   if (transitionActive) {

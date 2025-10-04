@@ -619,8 +619,12 @@ typedef struct Segment {
     inline static uint8_t getCurrentBrightness()           { return Segment::_segBri; }
     static void handleRandomPalette();
 
+<<<<<<< HEAD
     void    beginDraw();            // set up parameters for current effect
     void    setGeometry(uint16_t i1, uint16_t i2, uint8_t grp=1, uint8_t spc=0, uint16_t ofs=UINT16_MAX, uint16_t i1Y=0, uint16_t i2Y=1, uint8_t m12=0);
+=======
+    void    setGeometry(uint16_t i1, uint16_t i2, uint8_t grp=1, uint8_t spc=0, uint16_t ofs=UINT16_MAX, uint16_t i1Y=0, uint16_t i2Y=1, uint8_t m12 = 0);
+>>>>>>> v0.15.1
     Segment &setColor(uint8_t slot, uint32_t c);
     Segment &setCCT(uint16_t k);
     Segment &setOpacity(uint8_t o);

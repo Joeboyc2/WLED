@@ -199,10 +199,9 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
       }
       ledType |= refresh << 7; // hack bit 7 to indicate strip requires off refresh
 
-      //busConfigs.push_back(std::move(BusConfig(ledType, pins, start, length, colorOrder, reversed, skipFirst, AWmode, freqkHz, useGlobalLedBuffer, maPerLed, maMax)));
-      busConfigs.emplace_back(ledType, pins, start, length, colorOrder, reversed, skipFirst, AWmode, freqkHz, useGlobalLedBuffer, maPerLed, maMax);
+      busConfigs.push_back(std::move(BusConfig(ledType, pins, start, length, colorOrder, reversed, skipFirst, AWmode, freqkHz, useGlobalLedBuffer, maPerLed, maMax)));
       doInitBusses = true;  // finalization done in beginStrip()
-      if (!Bus::isVirtual(ledType)) s++; // have as many virtual buses as you want
+      s++;
     }
   }
   if (hw_led["rev"] && BusManager::getNumBusses()) BusManager::getBus(0)->setReversed(true); //set 0.11 global reversed setting for first bus
@@ -647,16 +646,16 @@ bool deserializeConfig(JsonObject doc, bool fromFS) {
 
 static const char s_cfg_json[] PROGMEM = "/cfg.json";
 
-void deserializeConfigFromFS() {
-  bool success = deserializeConfigSec();
+bool deserializeConfigFromFS() {
+  [[maybe_unused]] bool success = deserializeConfigSec();
   #ifdef WLED_ADD_EEPROM_SUPPORT
   if (!success) { //if file does not exist, try reading from EEPROM
     deEEPSettings();
-    return;
+    return true;
   }
   #endif
 
-  if (!requestJSONBufferLock(1)) return;
+  if (!requestJSONBufferLock(1)) return false;
 
   DEBUG_PRINTLN(F("Reading settings from /cfg.json..."));
 
@@ -666,17 +665,11 @@ void deserializeConfigFromFS() {
     #ifdef WLED_ADD_EEPROM_SUPPORT
     deEEPSettings();
     #endif
-
-    // save default values to /cfg.json
-    // call readFromConfig() with an empty object so that usermods can initialize to defaults prior to saving
-    JsonObject empty = JsonObject();
-    UsermodManager::readFromConfig(empty);
-    serializeConfigToFS();
     // init Ethernet (in case default type is set at compile time)
     #if defined(ARDUINO_ARCH_ESP32) && defined(WLED_USE_ETHERNET)
     initEthernet();
     #endif
-    return;
+    return true; // config does not exist (we will need to save it once strip is initialised)
   }
 
   // NOTE: This routine deserializes *and* applies the configuration
@@ -685,7 +678,7 @@ void deserializeConfigFromFS() {
   bool needsSave = deserializeConfig(root, true);
   releaseJSONBufferLock();
 
-  if (needsSave) serializeConfigToFS(); // usermods required new parameters
+  return needsSave;
 }
 
 void serializeConfigToFS() {
@@ -836,8 +829,8 @@ void serializeConfig(JsonObject root) {
 
   for (size_t s = 0; s < BusManager::getNumBusses(); s++) {
     DEBUG_PRINTF_P(PSTR("Cfg: Saving bus #%u\n"), s);
-    const Bus *bus = BusManager::getBus(s);
-    if (!bus || !bus->isOk()) break;
+    Bus *bus = BusManager::getBus(s);
+    if (!bus || bus->getLength()==0) break;
     DEBUG_PRINTF_P(PSTR("  (%d-%d, type:%d, CO:%d, rev:%d, skip:%d, AW:%d kHz:%d, mA:%d/%d)\n"),
       (int)bus->getStart(), (int)(bus->getStart()+bus->getLength()),
       (int)(bus->getType() & 0x7F),

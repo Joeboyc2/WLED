@@ -657,7 +657,10 @@ uint16_t dissolve(uint32_t color) {
   for (unsigned j = 0; j <= SEGLEN / 15; j++) {
     if (hw_random8() <= SEGMENT.intensity) {
       for (size_t times = 0; times < 10; times++) { //attempt to spawn a new pixel 10 times
-        unsigned i = hw_random16(SEGLEN);
+        unsigned i = random16(SEGLEN);
+        unsigned index = i >> 3;
+        unsigned bitNum = i & 0x07;
+        bool fadeUp = bitRead(SEGENV.data[index], bitNum);
         if (SEGENV.aux0) { //dissolve to primary/palette
           if (pixels[i] == SEGCOLOR(1)) {
             pixels[i] = color == SEGCOLOR(0) ? SEGMENT.color_from_palette(i, true, PALETTE_SOLID_WRAP, 0) : color;
@@ -1521,8 +1524,8 @@ uint16_t mode_fairytwinkle() {
   unsigned riseFallTime = 400 + (255-SEGMENT.speed)*3;
   unsigned maxDur = riseFallTime/100 + ((255 - SEGMENT.intensity) >> 2) + 13 + ((255 - SEGMENT.intensity) >> 1);
 
-  for (unsigned f = 0; f < SEGLEN; f++) {
-    uint16_t stateTime = now16 - flashers[f].stateStart;
+  for (int f = 0; f < SEGLEN; f++) {
+    unsigned stateTime = now16 - flashers[f].stateStart;
     //random on/off time reached, switch state
     if (stateTime > flashers[f].stateDur * 100) {
       flashers[f].stateOn = !flashers[f].stateOn;

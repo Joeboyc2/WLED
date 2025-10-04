@@ -97,7 +97,12 @@ bool deserializeSegment(JsonObject elem, byte it, byte presetId)
   bool     transpose = getBoolVal(elem[F("tp")], seg.transpose);
   #endif
 
+<<<<<<< HEAD
   int len = (stop > start) ? stop - start : 1;
+=======
+  int len = 1;
+  if (stop > start) len = stop - start;
+>>>>>>> v0.15.1
   int offset = elem[F("of")] | INT32_MAX;
   if (offset != INT32_MAX) {
     int offsetAbs = abs(offset);
@@ -388,10 +393,17 @@ bool deserializeState(JsonObject root, byte callMode, byte presetId)
   if (!segVar.isNull()) {
     // we may be called during strip.service() so we must not modify segments while effects are executing
     strip.suspend();
+<<<<<<< HEAD
     const unsigned long start = millis();
     while (strip.isServicing() && millis() - start < strip.getFrameTime()) yield(); // wait until frame is over
     #ifdef WLED_DEBUG
     if (millis() - start > 0) DEBUG_PRINTLN(F("JSON: Waited for strip to finish servicing."));
+=======
+    const unsigned long waitUntil = millis() + strip.getFrameTime();
+    while (strip.isServicing() && millis() < waitUntil) delay(1); // wait until frame is over
+    #ifdef WLED_DEBUG
+    if (millis() >= waitUntil) DEBUG_PRINTLN(F("JSON: Waited for strip to finish servicing."));
+>>>>>>> v0.15.1
     #endif
     if (segVar.is<JsonObject>()) {
       int id = segVar["id"] | -1;
