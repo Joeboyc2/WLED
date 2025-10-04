@@ -486,23 +486,26 @@ void Segment::loadOldPalette(void) {
 
 // relies on WS2812FX::service() to call it for each frame
 void Segment::handleRandomPalette() {
+  uint16_t time_ms = millis();
+  uint16_t time_s  = millis()/1000U;
   // is it time to generate a new palette?
-  if ((uint16_t)(millis()/1000U) - _lastPaletteChange > randomPaletteChangeTime) {
+  if ((uint16_t)(time_s - _lastPaletteChange) > randomPaletteChangeTime) {
     _newRandomPalette = useHarmonicRandomPalette ? generateHarmonicRandomPalette(_randomPalette) : generateRandomPalette();
-    _lastPaletteChange = (uint16_t)(millis()/1000U);
-    _lastPaletteBlend = (uint16_t)(millis())-512; // starts blending immediately
+    _lastPaletteChange = time_s;
+    _lastPaletteBlend = time_ms - 512; // starts blending immediately
   }
 
-  // assumes that 128 updates are sufficient to blend a palette, so shift by 7 (can be more, can be less)
-  // in reality there need to be 255 blends to fully blend two entirely different palettes
-  if ((uint16_t)millis() - _lastPaletteBlend < strip.getTransition() >> 7) return; // not yet time to fade, delay the update
-  _lastPaletteBlend = (uint16_t)millis();
+  // if palette transitions is enabled, blend it according to Transition Time (if longer than minimum given by service calls)
+  if (strip.paletteFade) {
+    // assumes that 128 updates are sufficient to blend a palette, so shift by 7 (can be more, can be less)
+    // in reality there need to be 255 blends to fully blend two entirely different palettes
+    if ((uint16_t)(time_ms - _lastPaletteBlend) < strip.getTransition() >> 7) return; // not yet time to fade, delay the update
+    _lastPaletteBlend = (uint16_t)millis();
+  }
   nblendPaletteTowardPalette(_randomPalette, _newRandomPalette, 48);
 }
 
-// sets Segment geometry (length or width/height and grouping, spacing and offset as well as 2D mapping)
-// strip must be suspended (strip.suspend()) before calling this function
-// this function may call fill() to clear pixels if spacing or mapping changed (which requires setting _vWidth, _vHeight, _vLength or beginDraw())
+// segId is given when called from network callback, changes are queued if that segment is currently in its effect function
 void Segment::setGeometry(uint16_t i1, uint16_t i2, uint8_t grp, uint8_t spc, uint16_t ofs, uint16_t i1Y, uint16_t i2Y, uint8_t m12) {
   // return if neither bounds nor grouping have changed
   bool boundsUnchanged = (start == i1 && stop == i2);
@@ -510,11 +513,12 @@ void Segment::setGeometry(uint16_t i1, uint16_t i2, uint8_t grp, uint8_t spc, ui
   if (Segment::maxHeight>1) boundsUnchanged &= (startY == i1Y && stopY == i2Y); // 2D
   #endif
 
-  if (stop && (spc > 0 || m12 != map1D2D)) clear();
+  m12 = constrain(m12, 0, 7);
+  if (stop && (spc > 0 || m12 != map1D2D)) fill(BLACK);
+  if (m12 != map1D2D) map1D2D = m12;
 /*
   if (boundsUnchanged
       && (!grp || (grouping == grp && spacing == spc))
-      && (ofs == UINT16_MAX || ofs == offset)
       && (m12 == map1D2D)
      ) return;
 */
@@ -1247,18 +1251,6 @@ void Segment::fade_out(uint8_t rate) {
   }
 }
 
-// fades all pixels to secondary color
-void Segment::fadeToSecondaryBy(uint8_t fadeBy) {
-  if (!isActive() || fadeBy == 0) return;   // optimization - no scaling to apply
-  const int cols = is2D() ? vWidth() : vLength();
-  const int rows = vHeight(); // will be 1 for 1D
-
-  for (int y = 0; y < rows; y++) for (int x = 0; x < cols; x++) {
-    if (is2D()) setPixelColorXY(x, y, color_blend(getPixelColorXY(x,y), colors[1], fadeBy));
-    else        setPixelColor(x, color_blend(getPixelColor(x), colors[1], fadeBy));
-  }
-}
-
 // fades all pixels to black using nscale8()
 void Segment::fadeToBlackBy(uint8_t fadeBy) {
   if (!isActive() || fadeBy == 0) return;   // optimization - no scaling to apply
@@ -1384,21 +1376,27 @@ void WS2812FX::finalizeInit() {
   #if defined(ARDUINO_ARCH_ESP32) && !defined(CONFIG_IDF_TARGET_ESP32C3)
   // determine if it is sensible to use parallel I2S outputs on ESP32 (i.e. more than 5 outputs = 1 I2S + 4 RMT)
   unsigned maxLedsOnBus = 0;
+  unsigned busType = 0;
   for (const auto &bus : busConfigs) {
     if (Bus::isDigital(bus.type) && !Bus::is2Pin(bus.type)) {
       digitalCount++;
+      if (busType == 0) busType = bus.type; // remember first bus type
+      if (busType != bus.type) {
+        DEBUG_PRINTF_P(PSTR("Mixed digital bus types detected! Forcing single I2S output.\n"));
+        useParallelI2S = false; // mixed bus types, no parallel I2S
+      }
       if (bus.count > maxLedsOnBus) maxLedsOnBus = bus.count;
     }
   }
   DEBUG_PRINTF_P(PSTR("Maximum LEDs on a bus: %u\nDigital buses: %u\n"), maxLedsOnBus, digitalCount);
-  // we may remove 300 LEDs per bus limit when NeoPixelBus is updated beyond 2.9.0
-  if (maxLedsOnBus <= 300 && useParallelI2S) BusManager::useParallelOutput(); // must call before creating buses
+  // we may remove 600 LEDs per bus limit when NeoPixelBus is updated beyond 2.8.3
+  if (digitalCount > 1 && maxLedsOnBus <= 600 && useParallelI2S) BusManager::useParallelOutput(); // must call before creating buses
   else useParallelI2S = false; // enforce single I2S
+  digitalCount = 0;
   #endif
 
   // create buses/outputs
   unsigned mem = 0;
-  digitalCount = 0;
   for (const auto &bus : busConfigs) {
     mem += bus.memUsage(Bus::isDigital(bus.type) && !Bus::is2Pin(bus.type) ? digitalCount++ : 0); // includes global buffer
     if (mem <= MAX_LED_MEMORY) {
@@ -1717,10 +1715,48 @@ void WS2812FX::show() {
   }
 }
 
-void WS2812FX::setTargetFps(unsigned fps) {
+/**
+ * Returns a true value if any of the strips are still being updated.
+ * On some hardware (ESP32), strip updates are done asynchronously.
+ */
+bool WS2812FX::isUpdating() const {
+  return !BusManager::canAllShow();
+}
+
+/**
+ * Returns the refresh rate of the LED strip. Useful for finding out whether a given setup is fast enough.
+ * Only updates on show() or is set to 0 fps if last show is more than 2 secs ago, so accuracy varies
+ */
+uint16_t WS2812FX::getFps() const {
+  if (millis() - _lastShow > 2000) return 0;
+  return (FPS_MULTIPLIER * _cumulativeFps) >> FPS_CALC_SHIFT; // _cumulativeFps is stored in fixed point
+}
+
+void WS2812FX::setTargetFps(uint8_t fps) {
   if (fps <= 250) _targetFps = fps;
   if (_targetFps > 0) _frametime = 1000 / _targetFps;
   else _frametime = MIN_FRAME_DELAY;     // unlimited mode
+}
+
+void WS2812FX::setMode(uint8_t segid, uint8_t m) {
+  if (segid >= _segments.size()) return;
+
+  if (m >= getModeCount()) m = getModeCount() - 1;
+
+  if (_segments[segid].mode != m) {
+    _segments[segid].setMode(m); // do not load defaults
+  }
+}
+
+//applies to all active and selected segments
+void WS2812FX::setColor(uint8_t slot, uint32_t c) {
+  if (slot >= NUM_COLORS) return;
+
+  for (segment &seg : _segments) {
+    if (seg.isActive() && seg.isSelected()) {
+      seg.setColor(slot, c);
+    }
+  }
 }
 
 void WS2812FX::setCCT(uint16_t k) {
@@ -1847,6 +1883,19 @@ void WS2812FX::purgeSegments() {
 
 Segment& WS2812FX::getSegment(unsigned id) {
   return _segments[id >= _segments.size() ? getMainSegmentId() : id]; // vectors
+}
+
+// sets new segment bounds, queues if that segment is currently running
+void WS2812FX::setSegment(uint8_t segId, uint16_t i1, uint16_t i2, uint8_t grouping, uint8_t spacing, uint16_t offset, uint16_t startY, uint16_t stopY) {
+  if (segId >= getSegmentsNum()) {
+    if (i2 <= i1) return; // do not append empty/inactive segments
+    appendSegment(Segment(0, strip.getLengthTotal()));
+    segId = getSegmentsNum()-1; // segments are added at the end of list
+  }
+  suspend();
+  _segments[segId].setGeometry(i1, i2, grouping, spacing, offset, startY, stopY);
+  resume();
+  if (segId > 0 && segId == getSegmentsNum()-1 && i2 <= i1) _segments.pop_back(); // if last segment was deleted remove it from vector
 }
 
 void WS2812FX::resetSegments() {

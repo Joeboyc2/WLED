@@ -7,7 +7,11 @@
  */
 
 // version code in format yymmddb (b = daily build)
+<<<<<<< HEAD
 #define VERSION 2412040
+=======
+#define VERSION 2507300
+>>>>>>> v0.15.1
 
 //uncomment this if you have a "my_config.h" file you'd like to use
 //#define WLED_USE_MY_CONFIG
@@ -407,7 +411,11 @@ WLED_GLOBAL bool useGlobalLedBuffer _INIT(false); // double buffering disabled o
 #else
 WLED_GLOBAL bool useGlobalLedBuffer _INIT(true);  // double buffering enabled on ESP32
   #ifndef CONFIG_IDF_TARGET_ESP32C3
+<<<<<<< HEAD
 WLED_GLOBAL bool useParallelI2S     _INIT(false); // parallel I2S for ESP32
+=======
+WLED_GLOBAL bool useParallelI2S     _INIT(true); // parallel I2S for ESP32
+>>>>>>> v0.15.1
   #endif
 #endif
 #ifdef WLED_USE_IC_CCT
@@ -907,11 +915,20 @@ WLED_GLOBAL ESPAsyncE131 ddp  _INIT_N(((handleE131Packet)));
 WLED_GLOBAL bool e131NewData _INIT(false);
 
 // led fx library object
+<<<<<<< HEAD
 WLED_GLOBAL WS2812FX   strip         _INIT(WS2812FX());
 WLED_GLOBAL std::vector<BusConfig> busConfigs;    //temporary, to remember values from network callback until after
 WLED_GLOBAL bool       doInitBusses  _INIT(false);
 WLED_GLOBAL int8_t     loadLedmap    _INIT(-1);
 WLED_GLOBAL uint8_t    currentLedmap _INIT(0);
+=======
+WLED_GLOBAL BusManager busses _INIT(BusManager());
+WLED_GLOBAL WS2812FX strip _INIT(WS2812FX());
+WLED_GLOBAL std::vector<BusConfig> busConfigs; //temporary, to remember values from network callback until after
+WLED_GLOBAL bool doInitBusses _INIT(false);
+WLED_GLOBAL int8_t loadLedmap _INIT(-1);
+WLED_GLOBAL uint8_t currentLedmap _INIT(0);
+>>>>>>> v0.15.1
 #ifndef ESP8266
 WLED_GLOBAL char  *ledmapNames[WLED_MAX_LEDMAPS-1] _INIT_N(({nullptr}));
 #endif

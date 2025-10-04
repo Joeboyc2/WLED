@@ -421,7 +421,11 @@ void WiFiEvent(WiFiEvent_t event)
     #endif
   #endif
     default:
+<<<<<<< HEAD
       DEBUG_PRINTF_P(PSTR("WiFi-E: Event %d\n"), (int)event);
+=======
+      DEBUG_PRINTF_P(PSTR("Network event: %d\n"), (int)event);
+>>>>>>> v0.15.1
       break;
   }
 }
