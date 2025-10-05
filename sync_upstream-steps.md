@@ -69,18 +69,6 @@ git remote add upstream https://github.com/Aircoookie/WLED.git
 
 ---
 
-## **Optional: Use Rebasing Instead of Merging**
-If you prefer a cleaner commit history, you can rebase your branch instead of merging:
-
-```bash
-# Rebase your custom branch on top of the updated main branch
-git rebase main
-```
-
-Resolve conflicts as they arise during the rebase process.
-
----
-
 ## **Automated Workflow**
 
 This repository includes a GitHub Actions workflow to automate the process of syncing the JoeboyC2 fork with the latest release. The workflow is triggered manually and performs the following steps automatically:

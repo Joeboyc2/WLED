@@ -27,12 +27,12 @@ jobs:
           git remote add upstream https://github.com/Aircoookie/WLED.git || echo "Upstream already exists"
           git fetch upstream --tags
 
-      - name: Sync Latest Release
+      - name: Reset to Latest Release
         run: |
           latest_tag=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n 1)
           git checkout ${{ github.event.inputs.branch }}
-          git merge upstream/$latest_tag
-          git push origin ${{ github.event.inputs.branch }}
+          git reset --hard $latest_tag
+          git push origin ${{ github.event.inputs.branch }} --force
 
       - name: Merge Into Custom Branch
         run: |
