@@ -14,30 +14,31 @@ git remote -v
 # Add the upstream remote if not already added
 git remote add upstream https://github.com/Aircoookie/WLED.git
 
-# Fetch all tags from upstream
-git fetch upstream --tags
 ```
 
 ---
 
-## **Step 2: Sync with Latest Release**
-1. Find the latest release tag:
+## **Step 2: Reset Main Branch to Latest Release**
+1. Find the latest release tag and ensure you have the latest upstream changes:
    ```bash
+   # Fetch the latest changes and tags from upstream
+   git fetch upstream --tags
+   
    # Get the most recent stable release tag (excluding betas and pre-releases)
    latest_tag=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n 1)
    echo "Latest tag: $latest_tag"
    ```
 
-2. Switch to the `main` branch and merge the latest release:
+2. Reset the `main` branch to match the upstream tag exactly:
    ```bash
    # Switch to main branch
    git checkout main
    
-   # Merge the latest release tag
-   git merge $latest_tag
+   # Reset main to match the latest release tag exactly
+   git reset --hard $latest_tag
    
-   # Push the updated main branch
-   git push origin main
+   # Force push the updated main branch since we're rewriting history
+   git push origin main --force
    ```
 
 ---
@@ -84,8 +85,8 @@ Resolve conflicts as they arise during the rebase process.
 
 This repository includes a GitHub Actions workflow to automate the process of syncing the JoeboyC2 fork with the latest release. The workflow is triggered manually and performs the following steps automatically:
 1. Fetches the latest release tag from the upstream repository.
-2. Merges the latest release into your `main` branch.
-3. Merges the `main` branch into your custom branch (`JoeboyC2_Mods`).
+2. Resets the `main` branch to exactly match the latest release tag.
+3. Merges the updated `main` branch into your custom branch (`JoeboyC2_Mods`).
 
 To trigger the workflow:
 1. Go to the **Actions** tab in this repository.
