@@ -11,6 +11,14 @@
  */
 //#include "../usermods/EXAMPLE_v2/usermod_v2_example.h"
 
+#ifdef USERMOD_MOTIONTOMQTT
+#include "../usermods/JoeboyC2_MotionToMQTT/usermod_v2_MotionToMQTT.h"
+#endif
+
+#ifdef USERMOD_DHT22TOMQTT
+#include "../usermods/JoeboyC2_DHT22ToMQTT/usermod_v2_DHT22ToMQTT.h"
+#endif
+
 #ifdef USERMOD_BATTERY
   #include "../usermods/Battery/usermod_v2_Battery.h"
 #endif
@@ -469,5 +477,13 @@ void registerUsermods()
 
   #ifdef USERMOD_POV_DISPLAY
   UsermodManager::add(new PovDisplayUsermod());
+  #endif
+
+  #ifdef USERMOD_MOTIONTOMQTT
+  UsermodManager::add(new Usermod_MotionToMQTT());
+  #endif
+
+  #ifdef USERMOD_DHT22TOMQTT
+  UsermodManager::add(new Usermod_DHT22ToMQTT());
   #endif
 }
