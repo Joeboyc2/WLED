@@ -4,36 +4,41 @@
 #include <Arduino.h>
 
 // Motion settings
-// Set MotionPin
+// Default MotionPin - can be overridden by user config
 #ifndef motionInputPin
-  #define motionInputPin 16
+    #define motionInputPin 16
 #endif
 
 class Usermod_MotionToMQTT : public Usermod {
   private:
         bool motionDetected = LOW;
         unsigned long motionStateChange = 0;
-        // Delay motion detection, this prevents LEDS's turning on after a reboot
-        unsigned long motionDelay = 60000; // 1 minute delay
+    // Delay motion detection, this prevents LEDS's turning on after a reboot
+    unsigned long motionDelay = 60000; // 1 minute delay (configurable)
         // Variable to capture the current time in the loop
         unsigned long currentTime = 0;
-        bool mqttInitialized = false;
-        String mqttMotionTopic = "";
+    bool mqttInitialized = false;
+    String mqttMotionTopic = "";
         unsigned long startupTime;
         unsigned long lastPrintTime = 0;
         const unsigned long printInterval = 60000; // Print every 60 seconds
         bool enabled = true; // Enable by default
+    // Configurable motion input pin
+    uint8_t motionPin = motionInputPin;
 
         // strings to reduce flash memory usage (used more than twice)
-        static const char _name[];
-        static const char _enabled[];
+    static const char _name[];
+    static const char _enabled[];
+    static const char _motion_delay[];
+    static const char _pin[];
+    static const char _restart_note[];
   public:
         void setup() {
             startupTime = millis();
             // Motion setup
             Serial.println("Starting Motion!");
             Serial.println("Initialising Motion sensor.. ");
-            pinMode(motionInputPin, INPUT);
+            pinMode(motionPin, INPUT);
         }
 
         void _mqttInitialize() {
@@ -69,7 +74,7 @@ class Usermod_MotionToMQTT : public Usermod {
 
         void _updateSensorData() {
             // Detect motion and publish message to MQTT
-            int currentMotionState = digitalRead(motionInputPin);
+            int currentMotionState = digitalRead(motionPin);
             
             if (currentMotionState != motionDetected) {
                 motionDetected = currentMotionState;
@@ -139,13 +144,17 @@ class Usermod_MotionToMQTT : public Usermod {
             }
 
             // Add Motion Input Pin to Json API
-            JsonArray motionPin = user.createNestedArray("Motion Sensor Pin");
-            motionPin.add(motionInputPin);
+            JsonArray motionPinArr = user.createNestedArray("Motion Sensor Pin");
+            motionPinArr.add(motionPin);
         }
 
         void addToConfig(JsonObject& root) {
             JsonObject top = root.createNestedObject(FPSTR(_name));
             top[FPSTR(_enabled)] = enabled;
+            // store seconds
+            top[FPSTR(_motion_delay)] = (motionDelay / 1000UL);
+            top[FPSTR(_pin)] = motionPin;
+            top[FPSTR(_restart_note)] = F("Changing pin requires restart");
         }
 
         bool readFromConfig(JsonObject& root) {
@@ -154,8 +163,18 @@ class Usermod_MotionToMQTT : public Usermod {
                 DEBUG_PRINTLN(F("No config found. Creating with defaults..."));
                 return false;
             }
-
             enabled = top[FPSTR(_enabled)] | enabled;
+            // prefer seconds value
+            if (top.containsKey(FPSTR(_motion_delay))) {
+                unsigned long secs = (unsigned long)top[FPSTR(_motion_delay)];
+                motionDelay = secs * 1000UL;
+            }
+            // clamp to between 1s and 1 day
+            if (motionDelay < 1000UL) motionDelay = 1000UL;
+            if (motionDelay > 86400000UL) motionDelay = 86400000UL;
+            if (top.containsKey(FPSTR(_pin))) {
+                motionPin = (uint8_t)top[FPSTR(_pin)];
+            }
             return true;
         }
 
@@ -167,3 +186,6 @@ class Usermod_MotionToMQTT : public Usermod {
 // strings to reduce flash memory usage (used more than twice)
 const char Usermod_MotionToMQTT::_name[]    PROGMEM = "MotionToMQTT";
 const char Usermod_MotionToMQTT::_enabled[] PROGMEM = "enabled";
+const char Usermod_MotionToMQTT::_motion_delay[] PROGMEM = "motionDelay";
+const char Usermod_MotionToMQTT::_pin[] PROGMEM = "pin";
+const char Usermod_MotionToMQTT::_restart_note[] PROGMEM = "restartNote";
