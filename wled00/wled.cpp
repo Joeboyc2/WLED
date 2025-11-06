@@ -583,6 +583,8 @@ void WLED::initAP(bool resetAP)
   DEBUG_PRINTF_P(PSTR("WiFi mode: %d, WiFi status: %d\n"), (int)WiFi.getMode(), (int)WiFi.status());
   IPAddress apip = WiFi.softAPIP();
   DEBUG_PRINTF_P(PSTR("AP IP: %s\n"), apip.toString().c_str());
+  DEBUG_PRINTF_P(PSTR("AP SSID: %s, pass len: %d, hide: %d, channel: %d\n"), apSSID, (int)strlen(apPass), (int)apHide, (int)apChannel);
+  DEBUG_PRINTF_P(PSTR("AP MAC: %s\n"), WiFi.softAPmacAddress().c_str());
   #ifdef ARDUINO_ARCH_ESP32
   WiFi.setTxPower(wifi_power_t(txPower));
   #endif
