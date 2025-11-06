@@ -69,8 +69,10 @@ const char dayShortNames_P[] PROGMEM = "ErrSunMonTueWedThuFriSat";
 
 char* monthStr(uint8_t month)
 {
-    strcpy_P(buffer, (PGM_P)pgm_read_word(&(monthNames_P[month])));
-    return buffer;
+   // On non-AVR platforms monthNames_P is a direct array of pointers
+   // and pgm_read_word may produce warnings. Use the array directly.
+   strcpy_P(buffer, (PGM_P)monthNames_P[month]);
+   return buffer;
 }
 
 char* monthShortStr(uint8_t month)
@@ -83,7 +85,8 @@ char* monthShortStr(uint8_t month)
 
 char* dayStr(uint8_t day) 
 {
-   strcpy_P(buffer, (PGM_P)pgm_read_word(&(dayNames_P[day])));
+   // Use direct access to the day names array to avoid pgm_read_word casts
+   strcpy_P(buffer, (PGM_P)dayNames_P[day]);
    return buffer;
 }
 

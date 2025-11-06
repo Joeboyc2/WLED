@@ -1744,7 +1744,7 @@ uint16_t mode_random_chase(void) {
     uint8_t b = random8(6) != 0 ? (color       & 0xFF) : random8();
     color = RGBW32(r, g, b, 0);
     SEGMENT.setPixelColor(i, color);
-    if (i == SEGLEN -1U && SEGENV.aux1 != (it & 0xFFFFU)) { //new first color in next frame
+    if (i == (int)(SEGLEN - 1U) && SEGENV.aux1 != (it & 0xFFFFU)) { //new first color in next frame
       SEGENV.step = color;
       SEGENV.aux0 = random16_get_seed();
     }

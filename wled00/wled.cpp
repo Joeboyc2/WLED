@@ -444,7 +444,8 @@ void WLED::setup()
   if (strcmp(multiWiFi[0].clientSSID, DEFAULT_CLIENT_SSID) == 0)
     showWelcomePage = true;
   WiFi.persistent(false);
-  WiFi.onEvent(WiFiEvent);
+  // register network event handler using lambda to avoid deprecated direct function pointer API
+  WiFi.onEvent([](WiFiEvent_t event){ WiFiEvent(event); });
   WiFi.mode(WIFI_STA); // enable scanning
   findWiFi(true);      // start scanning for available WiFi-s
 
