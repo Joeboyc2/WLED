@@ -577,8 +577,12 @@ void WLED::initAP(bool resetAP)
   }
   DEBUG_PRINT(F("Opening access point "));
   DEBUG_PRINTLN(apSSID);
-  WiFi.softAPConfig(IPAddress(4, 3, 2, 1), IPAddress(4, 3, 2, 1), IPAddress(255, 255, 255, 0));
-  WiFi.softAP(apSSID, apPass, apChannel, apHide);
+  bool cfgRes = WiFi.softAPConfig(IPAddress(4, 3, 2, 1), IPAddress(4, 3, 2, 1), IPAddress(255, 255, 255, 0));
+  bool apRes = WiFi.softAP(apSSID, apPass, apChannel, apHide);
+  DEBUG_PRINTF_P(PSTR("softAPConfig result: %d, softAP result: %d\n"), (int)cfgRes, (int)apRes);
+  DEBUG_PRINTF_P(PSTR("WiFi mode: %d, WiFi status: %d\n"), (int)WiFi.getMode(), (int)WiFi.status());
+  IPAddress apip = WiFi.softAPIP();
+  DEBUG_PRINTF_P(PSTR("AP IP: %s\n"), apip.toString().c_str());
   #ifdef ARDUINO_ARCH_ESP32
   WiFi.setTxPower(wifi_power_t(txPower));
   #endif
