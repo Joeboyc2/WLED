@@ -1,75 +1,135 @@
 # Syncing JoeboyC2 WLED Fork with the Upstream Repository
 
-This guide explains how to manually sync the fork with the upstream WLED repository's latest release, while also keeping the custom changes in the JoeboyC2_Mods branch. These steps have also been automated using a GitHub workflow that can be found in the fork.
+This guide explains how to manually sync the fork with the upstream WLED repository's latest release, while also keeping the custom changes in the JoeboyC2_Mods branch. These steps have also been automated using scripts and a GitHub workflow.
 
 ---
 
-## **Step 1: Add the Original Repository as Upstream**
-Run the following commands to add the upstream WLED repository as a remote:
+## **Automated Sync (Recommended)**
 
+### **Using Scripts**
+
+Two cross-platform scripts are available to automate the sync process:
+
+#### **Linux/Mac/Git Bash (Windows):**
+```bash
+chmod +x sync-fork.sh
+./sync-fork.sh
+```
+
+#### **Windows PowerShell:**
+```powershell
+PowerShell -ExecutionPolicy Bypass -File .\sync_fork.ps1
+```
+
+Both scripts will:
+- Check and add the upstream remote if needed
+- Fetch the latest stable release tag
+- Reset your main branch to match the upstream release
+- Merge updates into your custom branch (JoeboyC2_Mods)
+- Prompt for confirmation before force pushing
+
+---
+
+## **Manual Sync Steps**
+
+If you prefer to run commands manually, follow these platform-specific instructions:
+
+### **Linux/Mac/Git Bash**
+
+#### **Step 1: Add the Original Repository as Upstream**
 ```bash
 # Check the current setup remotes
 git remote -v
 
 # Add the upstream remote if not already added
 git remote add upstream https://github.com/Aircoookie/WLED.git
+```
 
+#### **Step 2: Reset Main Branch to Latest Release**
+```bash
+# Fetch the latest changes and tags from upstream
+git fetch upstream --tags
+
+# Get the most recent stable release tag (excluding betas and pre-releases)
+latest_tag=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n 1)
+echo "Latest tag: $latest_tag"
+
+# Switch to main branch
+git checkout main
+
+# Reset main to match the latest release tag exactly
+git reset --hard $latest_tag
+
+# Force push the updated main branch since we're rewriting history
+git push origin main --force
+```
+
+#### **Step 3: Merge Updates into Custom Branch**
+```bash
+# Switch to custom branch (JoeboyC2_Mods)
+git checkout JoeboyC2_Mods
+
+# Merge the updated main branch into custom branch
+git merge main
+
+# If conflicts occur, resolve them, then:
+git add .
+git commit -m "Merged updates from latest release"
+
+# Push the changes to your custom branch
+git push origin JoeboyC2_Mods
+```
+
+### **Windows PowerShell**
+
+#### **Step 1: Add the Original Repository as Upstream**
+```powershell
+# Check the current setup remotes
+git remote -v
+
+# Add the upstream remote if not already added
+git remote add upstream https://github.com/Aircoookie/WLED.git
+```
+
+#### **Step 2: Reset Main Branch to Latest Release**
+```powershell
+# Fetch the latest changes and tags from upstream
+git fetch upstream --tags
+
+# Get the most recent stable release tag (excluding betas and pre-releases)
+$tags = git tag -l | Where-Object { $_ -match "^v\d+\.\d+\.\d+$" }
+$latest_tag = $tags | Sort-Object { [Version]($_ -replace 'v', '') } | Select-Object -Last 1
+Write-Host "Latest tag: $latest_tag"
+
+# Switch to main branch
+git checkout main
+
+# Reset main to match the latest release tag exactly
+git reset --hard $latest_tag
+
+# Force push the updated main branch since we're rewriting history
+git push origin main --force
+```
+
+#### **Step 3: Merge Updates into Custom Branch**
+```powershell
+# Switch to custom branch (JoeboyC2_Mods)
+git checkout JoeboyC2_Mods
+
+# Merge the updated main branch into custom branch
+git merge main
+
+# If conflicts occur, resolve them, then:
+git add .
+git commit -m "Merged updates from latest release"
+
+# Push the changes to your custom branch
+git push origin JoeboyC2_Mods
 ```
 
 ---
 
-## **Step 2: Reset Main Branch to Latest Release**
-1. Find the latest release tag and ensure you have the latest upstream changes:
-   ```bash
-   # Fetch the latest changes and tags from upstream
-   git fetch upstream --tags
-   
-   # Get the most recent stable release tag (excluding betas and pre-releases)
-   latest_tag=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n 1)
-   echo "Latest tag: $latest_tag"
-   ```
-
-2. Reset the `main` branch to match the upstream tag exactly:
-   ```bash
-   # Switch to main branch
-   git checkout main
-   
-   # Reset main to match the latest release tag exactly
-   git reset --hard $latest_tag
-   
-   # Force push the updated main branch since we're rewriting history
-   git push origin main --force
-   ```
-
----
-
-## **Step 3: Merge Updates into Custom Branch**
-1. Switch to custom branch (`JoeboyC2_Mods`):
-   ```bash
-   git checkout JoeboyC2_Mods
-   ```
-
-2. Merge the updated `main` branch into custom branch:
-   ```bash
-   git merge main
-   ```
-
-3. Resolve any conflicts if prompted, then commit the changes:
-   ```bash
-   git add .
-   git commit -m "Merged updates from latest release"
-   ```
-
-4. Push the changes to your custom branch:
-   ```bash
-   git push origin JoeboyC2_Mods
-   ```
-
-5. Test customizations with new code to ensure everything works as expected.
-
----
-
-## **Automated Workflow**
+## **GitHub Actions Workflow**
 
 This repository includes a GitHub Actions workflow to automate the process of syncing the JoeboyC2 fork with the latest release. The workflow is triggered manually and performs the following steps automatically:
 1. Fetches the latest release tag from the upstream repository.
@@ -84,3 +144,10 @@ To trigger the workflow:
 You can find the workflow definition in `.github/workflows/sync_upstream.yml`.
 
 ---
+
+## **Important Notes**
+
+- **Test your customizations** after syncing to ensure everything works with the new code.
+- The force push in Step 2 rewrites history on the main branch. This is intentional to keep it in sync with upstream.
+- If merge conflicts occur in Step 3, you'll need to resolve them manually before pushing.
+- Always make sure you're in the correct directory (your repository root) before running these commands.
