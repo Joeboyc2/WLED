@@ -1,6 +1,6 @@
 # Syncing JoeboyC2 WLED Fork with the Upstream Repository
 
-This guide explains how to manually sync the fork with the upstream WLED repository's latest release, while also keeping the custom changes in the JoeboyC2_Mods branch. These steps have also been automated using scripts and a GitHub workflow.
+This guide explains how to manually sync the fork with the upstream WLED repository's latest release, while also keeping the custom changes in the JoeboyC2_Mods_V3 branch. These steps have also been automated using scripts and a GitHub workflow.
 
 ---
 
@@ -25,7 +25,7 @@ Both scripts will:
 - Check and add the upstream remote if needed
 - Fetch the latest stable release tag
 - Reset your main branch to match the upstream release
-- Merge updates into your custom branch (JoeboyC2_Mods)
+- Merge updates into your custom branch (JoeboyC2_Mods_V3)
 - Prompt for confirmation before force pushing
 
 ---
@@ -62,8 +62,8 @@ git push origin main --force
 
 ### **Step 3: Merge Updates into Custom Branch**
 ```bash
-# Switch to custom branch (JoeboyC2_Mods)
-git checkout JoeboyC2_Mods
+# Switch to custom branch (JoeboyC2_Mods_V3)
+git checkout JoeboyC2_Mods_V3
 
 # Merge the updated main branch into custom branch
 git merge main
@@ -73,7 +73,7 @@ git add .
 git commit -m "Merged updates from latest release"
 
 # Push the changes to your custom branch
-git push origin JoeboyC2_Mods
+git push origin JoeboyC2_Mods_V3
 ```
 
 ### **Step 4: Test Customizations**
@@ -114,8 +114,8 @@ git push origin main --force
 
 ### **Step 3: Merge Updates into Custom Branch**
 ```powershell
-# Switch to custom branch (JoeboyC2_Mods)
-git checkout JoeboyC2_Mods
+# Switch to custom branch (JoeboyC2_Mods_V3)
+git checkout JoeboyC2_Mods_V3
 
 # Merge the updated main branch into custom branch
 git merge main
@@ -125,7 +125,7 @@ git add .
 git commit -m "Merged updates from latest release"
 
 # Push the changes to your custom branch
-git push origin JoeboyC2_Mods
+git push origin JoeboyC2_Mods_V3
 ```
 
 ### **Step 4: Test Customizations**
@@ -138,7 +138,7 @@ Test your customizations with the new code to ensure everything works as expecte
 This repository includes a GitHub Actions workflow to automate the process of syncing the JoeboyC2 fork with the latest release. The workflow is triggered manually and performs the following steps automatically:
 1. Fetches the latest release tag from the upstream repository.
 2. Resets the `main` branch to exactly match the latest release tag.
-3. Merges the updated `main` branch into your custom branch (`JoeboyC2_Mods`).
+3. Merges the updated `main` branch into your custom branch (`JoeboyC2_Mods_V3`).
 
 To trigger the workflow:
 1. Go to the **Actions** tab in this repository.

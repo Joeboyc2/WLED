@@ -4,7 +4,7 @@
 $ErrorActionPreference = "Stop"
 
 $UPSTREAM_REPO = "https://github.com/Aircoookie/WLED.git"
-$CUSTOM_BRANCH = "JoeboyC2_Mods"
+$CUSTOM_BRANCH = "JoeboyC2_Mods_V3"
 
 Write-Host "=== Syncing Fork with Upstream WLED Repository ===" -ForegroundColor Cyan
 Write-Host ""

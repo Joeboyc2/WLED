@@ -6,7 +6,7 @@
 set -e  # Exit on error
 
 UPSTREAM_REPO="https://github.com/Aircoookie/WLED.git"
-CUSTOM_BRANCH="JoeboyC2_Mods"
+CUSTOM_BRANCH="JoeboyC2_Mods_V3"
 
 echo "=== Syncing Fork with Upstream WLED Repository ==="
 echo ""
