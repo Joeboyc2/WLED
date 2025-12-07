@@ -30,13 +30,9 @@ Both scripts will:
 
 ---
 
-## **Manual Sync Steps**
+## **Manual Sync Steps - Linux/Mac/Git Bash**
 
-If you prefer to run commands manually, follow these platform-specific instructions:
-
-### **Linux/Mac/Git Bash**
-
-#### **Step 1: Add the Original Repository as Upstream**
+### **Step 1: Add the Original Repository as Upstream**
 ```bash
 # Check the current setup remotes
 git remote -v
@@ -45,7 +41,7 @@ git remote -v
 git remote add upstream https://github.com/Aircoookie/WLED.git
 ```
 
-#### **Step 2: Reset Main Branch to Latest Release**
+### **Step 2: Reset Main Branch to Latest Release**
 ```bash
 # Fetch the latest changes and tags from upstream
 git fetch upstream --tags
@@ -64,7 +60,7 @@ git reset --hard $latest_tag
 git push origin main --force
 ```
 
-#### **Step 3: Merge Updates into Custom Branch**
+### **Step 3: Merge Updates into Custom Branch**
 ```bash
 # Switch to custom branch (JoeboyC2_Mods)
 git checkout JoeboyC2_Mods
@@ -80,9 +76,14 @@ git commit -m "Merged updates from latest release"
 git push origin JoeboyC2_Mods
 ```
 
-### **Windows PowerShell**
+### **Step 4: Test Customizations**
+Test your customizations with the new code to ensure everything works as expected.
 
-#### **Step 1: Add the Original Repository as Upstream**
+---
+
+## **Manual Sync Steps - Windows PowerShell**
+
+### **Step 1: Add the Original Repository as Upstream**
 ```powershell
 # Check the current setup remotes
 git remote -v
@@ -91,7 +92,7 @@ git remote -v
 git remote add upstream https://github.com/Aircoookie/WLED.git
 ```
 
-#### **Step 2: Reset Main Branch to Latest Release**
+### **Step 2: Reset Main Branch to Latest Release**
 ```powershell
 # Fetch the latest changes and tags from upstream
 git fetch upstream --tags
@@ -111,7 +112,7 @@ git reset --hard $latest_tag
 git push origin main --force
 ```
 
-#### **Step 3: Merge Updates into Custom Branch**
+### **Step 3: Merge Updates into Custom Branch**
 ```powershell
 # Switch to custom branch (JoeboyC2_Mods)
 git checkout JoeboyC2_Mods
@@ -126,6 +127,9 @@ git commit -m "Merged updates from latest release"
 # Push the changes to your custom branch
 git push origin JoeboyC2_Mods
 ```
+
+### **Step 4: Test Customizations**
+Test your customizations with the new code to ensure everything works as expected.
 
 ---
 
@@ -151,3 +155,4 @@ You can find the workflow definition in `.github/workflows/sync_upstream.yml`.
 - The force push in Step 2 rewrites history on the main branch. This is intentional to keep it in sync with upstream.
 - If merge conflicts occur in Step 3, you'll need to resolve them manually before pushing.
 - Always make sure you're in the correct directory (your repository root) before running these commands.
+- **Windows users:** If you encounter PowerShell execution policy errors, use the automated script command shown above which bypasses the policy, or use Git Bash instead.
