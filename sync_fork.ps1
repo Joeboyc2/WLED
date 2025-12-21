@@ -2,19 +2,31 @@
 # 
 # Features:
 # - Validates git state before operations
+# - Pre-merge analysis of file differences
 # - Proper merge conflict detection
 # - Safety checks before force push
 # - Automatic default branch detection
 # - Comprehensive error handling
+# - Cleanup mode to remove unwanted changes
+# - Check-only mode for safe analysis
 # 
 # Usage:
 #   .\sync_fork.ps1                    # Run normally
 #   .\sync_fork.ps1 -TestMode          # Test without making changes
+#   .\sync_fork.ps1 -CheckOnly         # Analyze differences without syncing
+#   .\sync_fork.ps1 -Cleanup           # Remove unwanted core changes, keep only usermods
 #   .\sync_fork.ps1 -Verbose           # Show debug output
+#
+# Examples:
+#   .\sync_fork.ps1 -CheckOnly -Verbose    # Safe analysis with details
+#   .\sync_fork.ps1 -TestMode -Cleanup     # Test cleanup mode
+#   .\sync_fork.ps1 -Cleanup               # Actually clean up unwanted changes
 
 param(
     [switch]$TestMode = $false,
-    [switch]$Verbose = $false
+    [switch]$Verbose = $false,
+    [switch]$CheckOnly = $false,
+    [switch]$Cleanup = $false
 )
 
 $ErrorActionPreference = "Stop"
@@ -78,11 +90,190 @@ function Get-DefaultBranch {
     return $defaultBranch
 }
 
+# Helper function to analyze file differences between branches
+function Show-BranchDifferences {
+    param(
+        [string]$Branch1,
+        [string]$Branch2,
+        [string]$Description
+    )
+    
+    Write-Host ""
+    Write-Host "=== $Description ===" -ForegroundColor Cyan
+    
+    $diffFiles = @(git diff --name-only "$Branch1..$Branch2" 2>$null)
+    
+    if ($diffFiles.Count -eq 0) {
+        Write-Host "[OK] No differences found" -ForegroundColor Green
+        return 0
+    }
+    
+    Write-Host "Files that differ ($($diffFiles.Count) total):" -ForegroundColor Yellow
+    $diffFiles | ForEach-Object { Write-Host "  - $_" }
+    
+    # Show statistics
+    $stats = git diff --stat "$Branch1..$Branch2" 2>$null
+    Write-Host ""
+    Write-Host "Statistics:" -ForegroundColor Cyan
+    $stats | Select-Object -Last 1 | ForEach-Object { Write-Host "  $_" }
+    
+    return $diffFiles.Count
+}
+
+# Helper function to cleanup unwanted core changes
+function Invoke-CleanupUnwantedChanges {
+    param(
+        [string]$DefaultBranch
+    )
+    
+    Write-Host ""
+    Write-Host "=== Cleanup Mode ===" -ForegroundColor Cyan
+    Write-Host "This will revert core files to baseline, keeping only:" -ForegroundColor Yellow
+    Write-Host "  • usermods/JoeboyC2_*/" -ForegroundColor White
+    Write-Host "  • platformio_override.ini" -ForegroundColor White
+    Write-Host "  • wled00/const.h (usermod defines)" -ForegroundColor White
+    Write-Host "  • wled00/usermods_list.cpp (usermod registration)" -ForegroundColor White
+    Write-Host ""
+    
+    $filesToRevert = @(
+        "wled00/FX.cpp",
+        "wled00/FX.h",
+        "wled00/FX_fcn.cpp",
+        "wled00/bus_manager.cpp",
+        "wled00/bus_manager.h",
+        "wled00/bus_wrapper.h",
+        "wled00/cfg.cpp",
+        "wled00/wled.cpp",
+        "wled00/wled.h",
+        "wled00/mqtt.cpp",
+        "wled00/led.cpp",
+        "wled00/json.cpp",
+        "wled00/set.cpp",
+        "wled00/udp.cpp",
+        "wled00/util.cpp",
+        "wled00/xml.cpp",
+        "wled00/src/dependencies/time/DateStrings.cpp"
+    )
+    
+    $filesFound = 0
+    foreach ($file in $filesToRevert) {
+        $diff = git diff --quiet $DefaultBranch..HEAD -- $file 2>$null
+        if ($LASTEXITCODE -eq 1) {
+            Write-Host "Reverting: $file" -ForegroundColor Yellow
+            if (-not $TestMode) {
+                git checkout $DefaultBranch -- $file
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "[WARN] Failed to revert $file" -ForegroundColor Yellow
+                } else {
+                    $filesFound++
+                }
+            } else {
+                Write-Host "  [TEST MODE] Would revert: $file" -ForegroundColor Cyan
+                $filesFound++
+            }
+        }
+    }
+    
+    if ($filesFound -gt 0) {
+        Write-Host ""
+        Write-Host "[OK] Reverted $filesFound files to baseline" -ForegroundColor Green
+        if (-not $TestMode) {
+            Write-Host "Review changes with: git diff --stat" -ForegroundColor Cyan
+            Write-Host "Commit with: git add . && git commit -m 'Cleanup: revert unwanted core changes'" -ForegroundColor Cyan
+        }
+    } else {
+        Write-Host "[OK] No unwanted core changes found" -ForegroundColor Green
+    }
+}
+
 Write-Host "=== Syncing Fork with Upstream WLED Repository ===" -ForegroundColor Cyan
 if ($TestMode) {
     Write-Host "[TEST MODE] - No changes will be made" -ForegroundColor Cyan
 }
+if ($CheckOnly) {
+    Write-Host "[CHECK ONLY] - Analyzing without syncing" -ForegroundColor Cyan
+}
+if ($Cleanup) {
+    Write-Host "[CLEANUP MODE] - Will remove unwanted core changes" -ForegroundColor Cyan
+}
 Write-Host ""
+
+# Handle cleanup mode
+if ($Cleanup) {
+    Write-Host "Step 0: Validating git state..." -ForegroundColor Yellow
+    Test-GitWorkingDirectory
+    Write-Host "[OK] Working directory is clean" -ForegroundColor Green
+    
+    Invoke-CleanupUnwantedChanges $CUSTOM_BRANCH
+    
+    if (-not $TestMode) {
+        Write-Host ""
+        $confirm = Read-Host "Commit cleanup changes? (y/N)"
+        if ($confirm -eq 'y' -or $confirm -eq 'Y') {
+            git add .
+            git commit -m "Cleanup: revert unwanted core changes"
+            Write-Host "[OK] Changes committed" -ForegroundColor Green
+            
+            $pushConfirm = Read-Host "Push to origin/$CUSTOM_BRANCH? (y/N)"
+            if ($pushConfirm -eq 'y' -or $pushConfirm -eq 'Y') {
+                git push origin $CUSTOM_BRANCH
+                Write-Host "[OK] Changes pushed" -ForegroundColor Green
+            }
+        }
+    }
+    exit 0
+}
+
+# Handle check-only mode
+if ($CheckOnly) {
+    Write-Host "Step 0: Validating git state..." -ForegroundColor Yellow
+    Test-GitWorkingDirectory
+    Write-Host "[OK] Working directory is clean" -ForegroundColor Green
+    Write-Host ""
+    
+    Write-Host "Step 1: Checking upstream remote..." -ForegroundColor Yellow
+    $remotes = git remote -v
+    if ($remotes -match "upstream") {
+        Write-Host "[OK] Upstream remote already exists" -ForegroundColor Green
+    } else {
+        Write-Host "[WARN] Upstream remote not found. Add with: git remote add upstream $UPSTREAM_REPO" -ForegroundColor Yellow
+    }
+    Write-Host ""
+    
+    Write-Host "Step 2: Fetching latest release..." -ForegroundColor Yellow
+    Invoke-GitCommand "git fetch upstream --tags" "Fetch upstream tags"
+    
+    try {
+        $tags = @(git tag -l | Where-Object { $_ -match "^v\d+\.\d+\.\d+$" })
+        if ($tags.Count -eq 0) {
+            Write-Host "[ERROR] Could not find any stable release tags" -ForegroundColor Red
+            exit 1
+        }
+        $latest_tag = $tags | Sort-Object { [Version]($_ -replace 'v', '') } | Select-Object -Last 1
+    } catch {
+        Write-Host "[ERROR] Failed to parse version tags: $_" -ForegroundColor Red
+        exit 1
+    }
+    
+    Write-Host "Latest upstream tag: $latest_tag" -ForegroundColor Green
+    Write-Host ""
+    
+    Write-Host "Step 3: Analyzing branch differences..." -ForegroundColor Yellow
+    $divergeCount = Show-BranchDifferences "main" "$CUSTOM_BRANCH" "Files in $CUSTOM_BRANCH not in main"
+    
+    Write-Host ""
+    if ($divergeCount -gt 20) {
+        Write-Host "[WARNING] High divergence detected ($divergeCount files)" -ForegroundColor Yellow
+        Write-Host "Consider running with -Cleanup flag to remove unwanted core changes" -ForegroundColor Cyan
+    } else {
+        Write-Host "[OK] Divergence is manageable" -ForegroundColor Green
+    }
+    
+    Write-Host ""
+    Write-Host "=== Check Complete ===" -ForegroundColor Cyan
+    Write-Host "No changes were made. Run without -CheckOnly to perform sync." -ForegroundColor Cyan
+    exit 0
+}
 
 # Step 0: Validate Git State
 Write-Host "Step 0: Validating git state..." -ForegroundColor Yellow
@@ -173,6 +364,10 @@ if (-not (git rev-parse --verify $CUSTOM_BRANCH 2>$null)) {
 Invoke-GitCommand "git checkout $CUSTOM_BRANCH" "Checkout $CUSTOM_BRANCH"
 
 Write-Host ""
+Write-Host "Analyzing merge impact..." -ForegroundColor Yellow
+Show-BranchDifferences "$CUSTOM_BRANCH" "$DEFAULT_BRANCH" "Changes that will be merged from $DEFAULT_BRANCH"
+
+Write-Host ""
 Write-Host "Attempting to merge $DEFAULT_BRANCH into $CUSTOM_BRANCH..." -ForegroundColor Yellow
 git merge $DEFAULT_BRANCH --no-edit
 
@@ -180,16 +375,23 @@ if ($LASTEXITCODE -ne 0) {
     Write-Host ""
     Write-Host "[WARNING] Merge conflicts detected!" -ForegroundColor Yellow
     Write-Host ""
-    Write-Host "Conflicted files:" -ForegroundColor Yellow
-    git diff --name-only --diff-filter=U
+    
+    $conflictFiles = @(git diff --name-only --diff-filter=U)
+    Write-Host "Conflicted files ($($conflictFiles.Count)):" -ForegroundColor Yellow
+    $conflictFiles | ForEach-Object { Write-Host "  - $_" }
+    
     Write-Host ""
-    Write-Host "Next steps:" -ForegroundColor Cyan
-    Write-Host "1. Resolve conflicts in your editor"
-    Write-Host "2. Stage resolved files: git add <file>"
-    Write-Host "3. Complete the merge: git commit -m 'Merge: synced with upstream $latest_tag'"
-    Write-Host "4. Push the branch: git push origin $CUSTOM_BRANCH"
+    Write-Host "Options:" -ForegroundColor Cyan
+    Write-Host "  1. Resolve conflicts manually in your editor"
+    Write-Host "  2. Abort merge and run with -Cleanup: git merge --abort && .\sync_fork.ps1 -Cleanup"
+    Write-Host "  3. Keep your version: git checkout --ours <file> && git add <file>"
+    Write-Host "  4. Keep main version: git checkout --theirs <file> && git add <file>"
     Write-Host ""
-    Write-Host "Or abort the merge with: git merge --abort"
+    Write-Host "After resolving, complete the merge with:" -ForegroundColor Cyan
+    Write-Host "  git add . && git commit -m 'Merge: synced with upstream $latest_tag'" -ForegroundColor White
+    Write-Host "  git push origin $CUSTOM_BRANCH" -ForegroundColor White
+    Write-Host ""
+    Write-Host "Or abort with: git merge --abort" -ForegroundColor Yellow
     exit 1
 }
 
