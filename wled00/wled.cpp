@@ -404,9 +404,6 @@ void WLED::setup()
     DEBUGFS_PRINTLN(F("FS failed!"));
     errorFlag = ERR_FS_BEGIN;
   }
-
-  handleBootLoop(); // check for bootloop and take action (requires WLED_FS)
-
 #ifdef WLED_ADD_EEPROM_SUPPORT
   else deEEP();
 #else
@@ -422,11 +419,6 @@ void WLED::setup()
   WLED_SET_AP_SSID(); // otherwise it is empty on first boot until config is saved
   multiWiFi.push_back(WiFiConfig(CLIENT_SSID,CLIENT_PASS)); // initialise vector with default WiFi
 
-  if(!verifyConfig()) {
-    if(!restoreConfig()) {
-      resetConfig();
-    }
-  }
   DEBUG_PRINTLN(F("Reading config"));
   bool needsCfgSave = deserializeConfigFromFS();
   DEBUG_PRINTF_P(PSTR("heap %u\n"), ESP.getFreeHeap());
@@ -453,8 +445,7 @@ void WLED::setup()
   if (strcmp(multiWiFi[0].clientSSID, DEFAULT_CLIENT_SSID) == 0)
     showWelcomePage = true;
   WiFi.persistent(false);
-  // register network event handler using lambda to avoid deprecated direct function pointer API
-  WiFi.onEvent([](WiFiEvent_t event){ WiFiEvent(event); });
+  WiFi.onEvent(WiFiEvent);
   WiFi.mode(WIFI_STA); // enable scanning
   findWiFi(true);      // start scanning for available WiFi-s
 
@@ -586,14 +577,8 @@ void WLED::initAP(bool resetAP)
   }
   DEBUG_PRINT(F("Opening access point "));
   DEBUG_PRINTLN(apSSID);
-  bool cfgRes = WiFi.softAPConfig(IPAddress(4, 3, 2, 1), IPAddress(4, 3, 2, 1), IPAddress(255, 255, 255, 0));
-  bool apRes = WiFi.softAP(apSSID, apPass, apChannel, apHide);
-  DEBUG_PRINTF_P(PSTR("softAPConfig result: %d, softAP result: %d\n"), (int)cfgRes, (int)apRes);
-  DEBUG_PRINTF_P(PSTR("WiFi mode: %d, WiFi status: %d\n"), (int)WiFi.getMode(), (int)WiFi.status());
-  IPAddress apip = WiFi.softAPIP();
-  DEBUG_PRINTF_P(PSTR("AP IP: %s\n"), apip.toString().c_str());
-  DEBUG_PRINTF_P(PSTR("AP SSID: %s, pass len: %d, hide: %d, channel: %d\n"), apSSID, (int)strlen(apPass), (int)apHide, (int)apChannel);
-  DEBUG_PRINTF_P(PSTR("AP MAC: %s\n"), WiFi.softAPmacAddress().c_str());
+  WiFi.softAPConfig(IPAddress(4, 3, 2, 1), IPAddress(4, 3, 2, 1), IPAddress(255, 255, 255, 0));
+  WiFi.softAP(apSSID, apPass, apChannel, apHide);
   #ifdef ARDUINO_ARCH_ESP32
   WiFi.setTxPower(wifi_power_t(txPower));
   #endif
