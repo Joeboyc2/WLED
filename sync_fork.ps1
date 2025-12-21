@@ -241,7 +241,7 @@ if ($CheckOnly) {
     Write-Host ""
     
     Write-Host "Step 2: Fetching latest release..." -ForegroundColor Yellow
-    Invoke-GitCommand "git fetch upstream --tags" "Fetch upstream tags"
+    Invoke-GitCommand "git fetch upstream --tags --force" "Fetch upstream tags"
     
     try {
         $tags = @(git tag -l | Where-Object { $_ -match "^v\d+\.\d+\.\d+$" })
@@ -302,7 +302,7 @@ Write-Host ""
 
 # Step 3: Reset Main/Master Branch to Latest Release
 Write-Host "Step 3: Fetching latest release from upstream..." -ForegroundColor Yellow
-Invoke-GitCommand "git fetch upstream --tags" "Fetch upstream tags"
+Invoke-GitCommand "git fetch upstream --tags --force" "Fetch upstream tags"
 
 # Get the most recent stable release tag (excluding betas and pre-releases)
 try {
