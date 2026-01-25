@@ -29,6 +29,7 @@ The enhanced sync script provides multiple modes for safe synchronization:
 ```
 
 **Features of the enhanced script:**
+
 - ✅ Pre-merge analysis of all file differences
 - ✅ Automatic detection of high divergence (warns if >20 files differ)
 - ✅ Cleanup mode to remove unwanted accumulated changes
@@ -37,6 +38,7 @@ The enhanced sync script provides multiple modes for safe synchronization:
 - ✅ Test mode to preview changes before committing
 
 ### **Using Linux/Mac/Git Bash:**
+
 ```bash
 chmod +x sync_fork_bash.sh
 ./sync_fork_bash.sh
@@ -47,28 +49,36 @@ chmod +x sync_fork_bash.sh
 ## **Recommended Sync Workflow**
 
 ### **1. Safe Analysis (Always Safe)**
+
 ```powershell
 .\sync_fork.ps1 -CheckOnly -Verbose
 ```
+
 This shows:
+
 - What files will change
 - How many files differ
 - Whether cleanup is recommended
 
 ### **2. Test the Sync (Safe)**
+
 ```powershell
 .\sync_fork.ps1 -TestMode
 ```
+
 Previews all changes without modifying your repo.
 
 ### **3. Clean Up If Needed (Safe)**
+
 If CheckOnly shows many unwanted core files changed:
+
 ```powershell
 .\sync_fork.ps1 -Cleanup -TestMode    # Preview cleanup
 .\sync_fork.ps1 -Cleanup               # Actually clean up
 ```
 
 ### **4. Perform the Sync**
+
 ```powershell
 .\sync_fork.ps1
 ```
@@ -78,6 +88,7 @@ If CheckOnly shows many unwanted core files changed:
 ## **Manual Sync Steps - Linux/Mac/Git Bash**
 
 ### **Step 1: Add the Original Repository as Upstream**
+
 ```bash
 # Check the current setup remotes
 git remote -v
@@ -87,6 +98,7 @@ git remote add upstream https://github.com/Aircoookie/WLED.git
 ```
 
 ### **Step 2: Reset Main Branch to Latest Release**
+
 ```bash
 # Fetch the latest changes and tags from upstream
 git fetch upstream --tags --force
@@ -106,6 +118,7 @@ git push origin main --force
 ```
 
 ### **Step 3: Merge Updates into Custom Branch**
+
 ```bash
 # Switch to custom branch (JoeboyC2_Mods_V3)
 git checkout JoeboyC2_Mods_V3
@@ -122,13 +135,15 @@ git push origin JoeboyC2_Mods_V3
 ```
 
 ### **Step 4: Test Customizations**
+
 Test your customizations with the new code to ensure everything works as expected.
 
 ---
 
 ## **Manual Sync Steps - Windows PowerShell**
 
-### **Step 1: Add the Original Repository as Upstream**
+### **Manual Step 1: Add the Original Repository as Upstream**
+
 ```powershell
 # Check the current setup remotes
 git remote -v
@@ -137,7 +152,8 @@ git remote -v
 git remote add upstream https://github.com/Aircoookie/WLED.git
 ```
 
-### **Step 2: Reset Main Branch to Latest Release**
+### **Manual Step 2: Reset Main Branch to Latest Release**
+
 ```powershell
 # Fetch the latest changes and tags from upstream
 git fetch upstream --tags --force
@@ -157,7 +173,8 @@ git reset --hard $latest_tag
 git push origin main --force
 ```
 
-### **Step 3: Merge Updates into Custom Branch**
+### **Manual Step 3: Merge Updates into Custom Branch**
+
 ```powershell
 # Switch to custom branch (JoeboyC2_Mods_V3)
 git checkout JoeboyC2_Mods_V3
@@ -173,7 +190,8 @@ git commit -m "Merged updates from latest release"
 git push origin JoeboyC2_Mods_V3
 ```
 
-### **Step 4: Test Customizations**
+### **Manual Step 4: Test Customizations**
+
 Test your customizations with the new code to ensure everything works as expected.
 
 ---
@@ -183,6 +201,7 @@ Test your customizations with the new code to ensure everything works as expecte
 If conflicts occur during merge, the script will display them. You have several options:
 
 ### **Option 1: Resolve Conflicts Manually**
+
 1. Open conflicted files in your editor
 2. Find `<<<<<<<` conflict markers
 3. Choose which version to keep
@@ -190,6 +209,7 @@ If conflicts occur during merge, the script will display them. You have several 
 5. Stage and commit: `git add . && git commit -m "Resolved merge conflicts"`
 
 ### **Option 2: Keep Your Custom Changes**
+
 ```bash
 # Keep your version of specific files
 git checkout --ours <filename>
@@ -197,6 +217,7 @@ git add <filename>
 ```
 
 ### **Option 3: Keep Upstream Changes**
+
 ```bash
 # Keep upstream version of specific files
 git checkout --theirs <filename>
@@ -204,6 +225,7 @@ git add <filename>
 ```
 
 ### **Option 4: Use Cleanup Mode**
+
 ```powershell
 # Abort the merge first
 git merge --abort
@@ -220,11 +242,13 @@ git merge --abort
 ## **GitHub Actions Workflow**
 
 This repository includes a GitHub Actions workflow to automate the process of syncing the JoeboyC2 fork with the latest release. The workflow is triggered manually and performs the following steps automatically:
+
 1. Fetches the latest release tag from the upstream repository.
 2. Resets the `main` branch to exactly match the latest release tag.
 3. Merges the updated `main` branch into your custom branch (`JoeboyC2_Mods_V3`).
 
 To trigger the workflow:
+
 1. Go to the **Actions** tab in this repository.
 2. Select the **Sync Upstream** workflow.
 3. Click on **Run workflow** and follow the prompts.
@@ -243,7 +267,9 @@ You can find the workflow definition in `.github/workflows/sync_upstream.yml`.
 - Use `-Cleanup` mode if accumulated changes have made the branch divergent
 - Always make sure you're in the correct directory (your repository root) before running these commands
 - **Windows users:** If you encounter PowerShell execution policy errors, use:
+
   ```powershell
   PowerShell -ExecutionPolicy Bypass -File .\sync_fork.ps1
   ```
+
   or use Git Bash instead
