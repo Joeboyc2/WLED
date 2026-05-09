@@ -24,7 +24,7 @@ echo ""
 
 # Step 2: Reset Main Branch to Latest Release
 echo "Step 2: Fetching latest release from upstream..."
-git fetch upstream --tags
+git fetch upstream --tags --force
 
 # Get the most recent stable release tag (excluding betas and pre-releases)
 latest_tag=$(git tag -l | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | sort -V | tail -n 1)
