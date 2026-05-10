@@ -1,0 +1,5 @@
+{
+  "name": "JoeboyC2_MotionToMQTT",
+  "build": { "libArchive": false },
+  "dependencies": {}
+}
